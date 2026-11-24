@@ -1,7 +1,16 @@
 import { createAsyncThunk, unwrapResult } from "@reduxjs/toolkit";
 import { ContextItem, McpUiState } from "core";
-import { CLIENT_TOOLS_IMPLS } from "core/tools/builtIn";
+import { BuiltInToolNames, CLIENT_TOOLS_IMPLS } from "core/tools/builtIn";
 import { ContinueError, ContinueErrorReason } from "core/util/errors";
+import {
+  NOT_REQUESTED_MESSAGE,
+  userRequestedVerification,
+} from "core/tools/verification/verify";
+import { renderChatMessage } from "core/util/messageContent";
+import {
+  toolCallSignature,
+  trailingIdentical,
+} from "core/util/repetitionDetector";
 
 import { callClientTool } from "../../util/clientTools/callClientTool";
 import { selectSelectedChatModel } from "../slices/configSlice";
@@ -12,9 +21,49 @@ import {
   setToolCallCalling,
   updateToolCallOutput,
 } from "../slices/sessionSlice";
-import { ThunkApiType } from "../store";
+import { RootState, ThunkApiType } from "../store";
 import { findToolCallById, logToolUsage } from "../util";
 import { streamResponseAfterToolCall } from "./streamResponseAfterToolCall";
+
+/** Refuses the 3rd identical consecutive tool call: its result cannot differ. */
+function identicalCallRefusal(
+  history: RootState["session"]["history"],
+  toolCallId: string,
+  name: string,
+  args: unknown,
+): string | undefined {
+  const prior: string[] = [];
+  for (const item of history) {
+    for (const tc of item.toolCallStates ?? []) {
+      if (tc.toolCallId === toolCallId) continue;
+      prior.push(toolCallSignature(tc.toolCall.function.name, tc.parsedArgs));
+    }
+  }
+  if (trailingIdentical(prior, toolCallSignature(name, args)) >= 2) {
+    return `This exact ${name} call was already made twice with the same result. Do not repeat it: use different arguments or a different tool, or answer with what you have.`;
+  }
+  return undefined;
+}
+
+/** Verification tools run only when the user's latest message asks for them. */
+function verificationRefusal(
+  history: RootState["session"]["history"],
+  name: string,
+  args: any,
+): string | undefined {
+  const kind =
+    name === BuiltInToolNames.RunTests
+      ? "tests"
+      : name === BuiltInToolNames.RunChecks
+        ? "checks"
+        : name === BuiltInToolNames.FindTests
+          ? "find-tests"
+          : undefined;
+  if (!kind || args?.logId) return undefined;
+  const lastUser = [...history].reverse().find((h) => h.message.role === "user");
+  const text = lastUser ? renderChatMessage(lastUser.message) : "";
+  return userRequestedVerification(text, kind) ? undefined : NOT_REQUESTED_MESSAGE;
+}
 
 export const callToolById = createAsyncThunk<
   void,
@@ -56,7 +105,22 @@ export const callToolById = createAsyncThunk<
   // Are caught and passed in output as context items
   // Errors that occur outside specifically calling the tool
   // Should not be caught here - should be handled as normal stream errors
-  if (
+  const refusal =
+    verificationRefusal(
+      state.session.history,
+      toolCallState.toolCall.function.name,
+      toolCallState.parsedArgs,
+    ) ??
+    identicalCallRefusal(
+      state.session.history,
+      toolCallId,
+      toolCallState.toolCall.function.name,
+      toolCallState.parsedArgs,
+    );
+  if (refusal) {
+    error = new ContinueError(ContinueErrorReason.Unspecified, refusal);
+    streamResponse = true;
+  } else if (
     CLIENT_TOOLS_IMPLS.find(
       (toolName) => toolName === toolCallState.toolCall.function.name,
     )

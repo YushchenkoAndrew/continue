@@ -1,13 +1,17 @@
 import { createAsyncThunk, unwrapResult } from "@reduxjs/toolkit";
-import { LLMFullCompletionOptions, ModelDescription } from "core";
+import { IDE, LLMFullCompletionOptions, ModelDescription } from "core";
+import { memoryPaths } from "core/tools/memory/memoryStore";
 import { getRuleId } from "core/llm/rules/getSystemMessageWithRules";
 import { ToCoreProtocol } from "core/protocol";
-import { BUILT_IN_GROUP_NAME } from "core/tools/builtIn";
+import { BUILT_IN_GROUP_NAME, BuiltInToolNames } from "core/tools/builtIn";
+import { LoopGuard } from "core/util/repetitionDetector";
+import { shouldCompact } from "../../util/autoCompaction";
 import { selectActiveTools } from "../selectors/selectActiveTools";
 import { selectSelectedChatModel } from "../slices/configSlice";
 import {
   abortStream,
   addPromptCompletionPair,
+  discardPartialStream,
   errorToolCall,
   setActive,
   setAppliedRulesAtIndex,
@@ -32,6 +36,7 @@ import {
   selectPendingToolCalls,
 } from "../selectors/selectToolCalls";
 import { getBaseSystemMessage } from "../util/getBaseSystemMessage";
+import { autoCompact } from "./autoCompact";
 import { callToolById } from "./callToolById";
 import { evaluateToolPolicies } from "./evaluateToolPolicies";
 import { preprocessToolCalls } from "./preprocessToolCallArgs";
@@ -69,17 +74,48 @@ function buildReasoningCompletionOptions(
   return reasoningOptions;
 }
 
+/**
+ * One short line, only when memory files exist: the content itself is fetched
+ * on demand, so persistent memory costs almost nothing per request.
+ */
+async function getMemoryHint(
+  ide: IDE,
+  activeTools: { function: { name: string } }[],
+): Promise<string> {
+  try {
+    const names = new Set(activeTools.map((t) => t.function.name));
+    const root = (await ide.getWorkspaceDirs())[0];
+    if (!root) return "";
+    const { project, task } = memoryPaths(root);
+    const hints: string[] = [];
+    if (names.has(BuiltInToolNames.GetProjectMemory) && (await ide.fileExists(project))) {
+      hints.push("project memory exists (get_project_memory)");
+    }
+    if (names.has(BuiltInToolNames.GetTaskState) && (await ide.fileExists(task))) {
+      hints.push("a saved task exists (get_task_state): check it if the user continues earlier work");
+    }
+    return hints.length ? `\n\nNote: ${hints.join("; ")}.` : "";
+  } catch {
+    return "";
+  }
+}
+
+const LOOP_RETRY_NOTE =
+  "\n\nYour previous attempt got stuck repeating itself. Do not re-analyse. Take the single most useful next action now: call a tool, or give a short answer.";
+
 export const streamNormalInput = createAsyncThunk<
   void,
   {
     legacySlashCommandData?: ToCoreProtocol["llm/streamChat"][0]["legacySlashCommandData"];
     depth?: number;
+    /** 0 = normal; 1 = retrying after a detected generation loop */
+    loopRetry?: number;
   },
   ThunkApiType
 >(
   "chat/streamNormalInput",
   async (
-    { legacySlashCommandData, depth = 0 },
+    { legacySlashCommandData, depth = 0, loopRetry = 0 },
     { dispatch, extra, getState },
   ) => {
     if (process.env.NODE_ENV === "test" && depth > 50) {
@@ -132,12 +168,22 @@ export const streamNormalInput = createAsyncThunk<
       selectedChatModel,
     );
 
+    if (loopRetry > 0) {
+      // Retry after a loop: no reasoning, and tell the model to act.
+      completionOptions = {
+        ...completionOptions,
+        reasoning: false,
+        reasoningBudgetTokens: undefined,
+      };
+    }
+
     // Construct messages (excluding system message)
-    const baseSystemMessage = getBaseSystemMessage(
-      state.session.mode,
-      selectedChatModel,
-      activeTools,
-    );
+    const baseSystemMessage =
+      getBaseSystemMessage(state.session.mode, selectedChatModel, activeTools) +
+      (state.session.mode === "agent"
+        ? await getMemoryHint(extra.ideMessenger.ide, activeTools)
+        : "") +
+      (loopRetry > 0 ? LOOP_RETRY_NOTE : "");
 
     const systemMessage = systemToolsFramework
       ? addSystemMessageToolsToSystemMessage(
@@ -193,8 +239,27 @@ export const streamNormalInput = createAsyncThunk<
     dispatch(setIsPruned(didPrune));
     dispatch(setContextPercentage(contextPercentage));
 
+    // Context nearly full: replace older history with a brief instead of
+    // letting the model lose it (or the user starting a fresh, empty chat).
+    if (loopRetry === 0 && shouldCompact({ contextPercentage, didPrune })) {
+      const compacted = unwrapResult(await dispatch(autoCompact()));
+      if (compacted) {
+        unwrapResult(
+          await dispatch(streamNormalInput({ legacySlashCommandData, depth })),
+        );
+        return;
+      }
+    }
+
     const start = Date.now();
     const streamAborter = state.session.streamAborter;
+    const startHistoryLength = state.session.history.length;
+    const loopGuard = new LoopGuard(
+      LoopGuard.thinkingCapChars(selectedChatModel.contextLength),
+    );
+    const guardAborter = new AbortController();
+    const forwardAbort = () => guardAborter.abort();
+    streamAborter.signal.addEventListener("abort", forwardAbort);
     try {
       let gen = extra.ideMessenger.llmStreamChat(
         {
@@ -204,7 +269,7 @@ export const streamNormalInput = createAsyncThunk<
           legacySlashCommandData,
           messageOptions: { precompiled: true },
         },
-        streamAborter.signal,
+        guardAborter.signal,
       );
       if (systemToolsFramework && activeTools.length > 0) {
         gen = interceptSystemToolCalls(
@@ -222,6 +287,16 @@ export const streamNormalInput = createAsyncThunk<
         }
 
         dispatch(streamUpdate(next.value));
+        for (const m of next.value) {
+          const text = typeof m.content === "string" ? m.content : "";
+          if (m.role === "thinking" || m.role === "assistant") {
+            loopGuard.feed(m.role === "thinking" ? "thinking" : "content", text);
+          }
+        }
+        if (loopGuard.tripped) {
+          guardAborter.abort();
+          break;
+        }
         next = await gen.next();
       }
 
@@ -279,6 +354,29 @@ export const streamNormalInput = createAsyncThunk<
       } else {
         throw e;
       }
+    }
+
+    streamAborter.signal.removeEventListener("abort", forwardAbort);
+
+    if (loopGuard.tripped && !streamAborter.signal.aborted) {
+      dispatch(discardPartialStream(startHistoryLength));
+      if (loopRetry < 1) {
+        unwrapResult(
+          await dispatch(
+            streamNormalInput({
+              legacySlashCommandData,
+              depth,
+              loopRetry: loopRetry + 1,
+            }),
+          ),
+        );
+        return;
+      }
+      throw new Error(
+        loopGuard.tripped === "thinking-cap"
+          ? "The model kept reasoning without acting, even after a retry. Try rephrasing, or lower the reasoning budget on the server (--reasoning-budget)."
+          : "The model got stuck repeating itself, even after a retry. Try rephrasing or start from a smaller step.",
+      );
     }
 
     // Tool call sequence:

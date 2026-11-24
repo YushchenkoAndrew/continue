@@ -2,6 +2,7 @@ import { ToolImpl } from ".";
 import { RangeInFile } from "../..";
 import { retrieveContextItemsFromEmbeddings } from "../../context/retrieval/retrieval";
 import { getStringArg } from "../parseArgs";
+import { readBudgetChars } from "./readBudget";
 
 export const codebaseToolImpl: ToolImpl = async (args, extras) => {
   const query = getStringArg(args, "query");
@@ -42,7 +43,21 @@ Try re-indexing the codebase or using a more specific query.`,
       ];
     }
 
-    return results;
+    // Bound the total size so a few large chunks cannot flood a small context.
+    let remaining = readBudgetChars(
+      extras.config.selectedModelByRole.chat?.contextLength,
+    );
+    const bounded = [];
+    for (const item of results) {
+      if (remaining <= 400) break;
+      const content =
+        item.content.length > remaining
+          ? item.content.slice(0, remaining) + "\n…[truncated; use read_symbol/read_file for more]"
+          : item.content;
+      remaining -= content.length;
+      bounded.push({ ...item, content });
+    }
+    return bounded;
   } catch (error) {
     return [
       {

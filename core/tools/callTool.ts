@@ -14,6 +14,26 @@ import { grepSearchImpl } from "./implementations/grepSearch";
 import { lsToolImpl } from "./implementations/lsTool";
 import { readCurrentlyOpenFileImpl } from "./implementations/readCurrentlyOpenFile";
 import { readFileImpl } from "./implementations/readFile";
+import { dependencyGraphImpl } from "./implementations/dependencyGraph";
+import { fileOutlineImpl, readSymbolImpl } from "./implementations/fileOutline";
+import {
+  findDefinitionImpl,
+  findReferencesImpl,
+  getCallHierarchyImpl,
+  getHoverInfoImpl,
+  getImplementationsImpl,
+  getTypeDefinitionImpl,
+} from "./implementations/languageIntel";
+import { prepareContextImpl } from "./implementations/prepareContext";
+import { projectMapImpl } from "./implementations/projectMap";
+import {
+  getProjectMemoryImpl,
+  getTaskStateImpl,
+  saveTaskStateImpl,
+  updateProjectMemoryImpl,
+} from "./implementations/projectMemory";
+import { findTestsImpl, runChecksImpl, runTestsImpl } from "./implementations/verification";
+import { fetchUrlImpl, webSearchImpl } from "./implementations/webResearch";
 
 import { readFileRangeImpl } from "./implementations/readFileRange";
 import { readSkillImpl } from "./implementations/readSkill";
@@ -224,6 +244,46 @@ export async function callBuiltInTool(
       return await viewRepoMapImpl(args, extras);
     case BuiltInToolNames.ViewSubdirectory:
       return await viewSubdirectoryImpl(args, extras);
+    case BuiltInToolNames.FileOutline:
+      return await fileOutlineImpl(args, extras);
+    case BuiltInToolNames.ReadSymbol:
+      return await readSymbolImpl(args, extras);
+    case BuiltInToolNames.FindDefinition:
+      return await findDefinitionImpl(args, extras);
+    case BuiltInToolNames.FindReferences:
+      return await findReferencesImpl(args, extras);
+    case BuiltInToolNames.GetTypeDefinition:
+      return await getTypeDefinitionImpl(args, extras);
+    case BuiltInToolNames.GetImplementations:
+      return await getImplementationsImpl(args, extras);
+    case BuiltInToolNames.GetHoverInfo:
+      return await getHoverInfoImpl(args, extras);
+    case BuiltInToolNames.GetCallHierarchy:
+      return await getCallHierarchyImpl(args, extras);
+    case BuiltInToolNames.ProjectMap:
+      return await projectMapImpl(args, extras);
+    case BuiltInToolNames.DependencyGraph:
+      return await dependencyGraphImpl(args, extras);
+    case BuiltInToolNames.PrepareContext:
+      return await prepareContextImpl(args, extras);
+    case BuiltInToolNames.WebSearch:
+      return await webSearchImpl(args, extras);
+    case BuiltInToolNames.FetchUrl:
+      return await fetchUrlImpl(args, extras);
+    case BuiltInToolNames.FindTests:
+      return await findTestsImpl(args, extras);
+    case BuiltInToolNames.RunTests:
+      return await runTestsImpl(args, extras);
+    case BuiltInToolNames.RunChecks:
+      return await runChecksImpl(args, extras);
+    case BuiltInToolNames.GetProjectMemory:
+      return await getProjectMemoryImpl(args, extras);
+    case BuiltInToolNames.UpdateProjectMemory:
+      return await updateProjectMemoryImpl(args, extras);
+    case BuiltInToolNames.SaveTaskState:
+      return await saveTaskStateImpl(args, extras);
+    case BuiltInToolNames.GetTaskState:
+      return await getTaskStateImpl(args, extras);
     default:
       throw new Error(`Tool "${functionName}" not found`);
   }

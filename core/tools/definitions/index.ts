@@ -19,3 +19,19 @@ export { singleFindAndReplaceTool } from "./singleFindAndReplace";
 export { viewDiffTool } from "./viewDiff";
 export { viewRepoMapTool } from "./viewRepoMap";
 export { viewSubdirectoryTool } from "./viewSubdirectory";
+export { fileOutlineTool, readSymbolTool } from "./fileOutline";
+export { insertLinesTool, replaceLinesTool } from "./lineEdit";
+export {
+  findDefinitionTool,
+  findReferencesTool,
+  getCallHierarchyTool,
+  getHoverInfoTool,
+  getImplementationsTool,
+  getTypeDefinitionTool,
+  renameSymbolTool,
+} from "./languageIntel";
+export { applyPatchTool } from "./applyPatch";
+export { getProjectMemoryTool, getTaskStateTool, saveTaskStateTool, updateProjectMemoryTool } from "./projectMemory";
+export { dependencyGraphTool, prepareContextTool, projectMapTool } from "./projectContext";
+export { fetchUrlTool, webSearchTool } from "./webResearch";
+export { findTestsTool, runChecksTool, runTestsTool } from "./verification";

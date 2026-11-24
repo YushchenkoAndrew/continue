@@ -443,6 +443,12 @@ export const sessionSlice = createSlice({
       state.isPruned = false;
       state.contextPercentage = undefined;
     },
+    discardPartialStream: (state, action: PayloadAction<number>) => {
+      // Drops history items produced by an aborted (looping) generation
+      if (action.payload >= 0 && action.payload < state.history.length) {
+        state.history = state.history.slice(0, action.payload);
+      }
+    },
     deleteCompaction: (state, action: PayloadAction<number>) => {
       // Removes the conversation summary from the specified message
       const historyItem = state.history[action.payload];
@@ -1066,6 +1072,7 @@ export const {
   setMainEditorContentTrigger,
   deleteMessage,
   deleteCompaction,
+  discardPartialStream,
   setIsGatheringContext,
   resetNextCodeBlockToApplyIndex,
   updateApplyState,

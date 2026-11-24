@@ -1,6 +1,7 @@
 import { ToolCallState } from "core";
 import { BuiltInToolNames } from "core/tools/builtIn";
 import { EditOperation } from "core/tools/definitions/multiEdit";
+import { ApplyPatchDisplay } from "./ApplyPatchDisplay";
 import { CreateFile } from "./CreateFile";
 import { EditFile } from "./EditFile";
 import { FindAndReplaceDisplay } from "./FindAndReplace";
@@ -64,6 +65,27 @@ function FunctionSpecificToolCallDiv({
           edits={processedArgs?.edits ?? args?.edits ?? []}
           toolCallId={toolCall.id}
           historyIndex={historyIndex}
+        />
+      );
+    case BuiltInToolNames.ReplaceLines:
+    case BuiltInToolNames.InsertLines:
+      return (
+        <FindAndReplaceDisplay
+          editingFileContents={processedArgs?.editingFileContents}
+          relativeFilePath={processedArgs?.filepath ?? args?.filepath ?? ""}
+          fileUri={processedArgs?.fileUri ?? ""}
+          newFileContents={processedArgs?.newFileContents}
+          edits={[]}
+          toolCallId={toolCall.id}
+          historyIndex={historyIndex}
+        />
+      );
+    case BuiltInToolNames.ApplyPatch:
+      return (
+        <ApplyPatchDisplay
+          toolCallId={toolCall.id}
+          summary={processedArgs?.summary}
+          patch={args?.patch}
         />
       );
     case BuiltInToolNames.RunTerminalCommand:

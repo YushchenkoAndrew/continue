@@ -16,7 +16,7 @@ export const readFileTool: Tool = {
   function: {
     name: BuiltInToolNames.ReadFile,
     description:
-      "Use this tool if you need to view the contents of an existing file.",
+      "Read a file with line numbers (\"N| text\"). Large files return a bounded window; continue with startLine. Use file_outline/read_symbol for big files.",
     parameters: {
       type: "object",
       required: ["filepath"],
@@ -24,7 +24,15 @@ export const readFileTool: Tool = {
         filepath: {
           type: "string",
           description:
-            "The path of the file to read. Can be a relative path (from workspace root), absolute path, tilde path (~/...), or file:// URI",
+            "Path relative to the workspace root (absolute paths and file:// URIs also work)",
+        },
+        startLine: {
+          type: "number",
+          description: "Optional 1-based first line",
+        },
+        endLine: {
+          type: "number",
+          description: "Optional 1-based last line",
         },
       },
     },

@@ -9,6 +9,8 @@ import type {
   IdeInfo,
   IdeSettings,
   IndexTag,
+  LanguageQuery,
+  LanguageQueryResult,
   Location,
   Problem,
   Range,
@@ -56,6 +58,10 @@ export class MessageIde implements IDE {
 
   async getReferences(location: Location): Promise<RangeInFile[]> {
     return this.request("getReferences", { location });
+  }
+
+  async languageQuery(query: LanguageQuery): Promise<LanguageQueryResult> {
+    return this.request("languageQuery", { query });
   }
 
   async getDocumentSymbols(

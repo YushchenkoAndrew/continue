@@ -13,6 +13,11 @@ import {
   updateApplyState,
   updateToolCallOutput,
 } from "../slices/sessionSlice";
+import {
+  abortMultiFileApply,
+  nextMultiFileApply,
+  takeMultiFileSummary,
+} from "../../util/clientTools/multiFileApply";
 import { ThunkApiType } from "../store";
 import { findToolCallById, logToolUsage } from "../util";
 import { exitEdit } from "./edit";
@@ -65,6 +70,18 @@ export const handleApplyStateUpdate = createAsyncThunk<
           if (toolCallState) {
             const accepted = toolCallState.status !== "canceled";
 
+            // Multi-file edits (apply_patch, rename_symbol): review the next file
+            // before the tool call is considered complete.
+            if (accepted && toolCallState.status !== "errored") {
+              const next = nextMultiFileApply(applyState.toolCallId);
+              if (next) {
+                void dispatch(applyForEditTool(next));
+                return;
+              }
+            } else {
+              abortMultiFileApply(applyState.toolCallId);
+            }
+
             logToolUsage(toolCallState, accepted, true, extra.ideMessenger);
 
             // Log edit outcome for Agent Mode
@@ -109,13 +126,16 @@ export const handleApplyStateUpdate = createAsyncThunk<
                     }),
                   );
                 } else {
+                  const multi = takeMultiFileSummary(applyState.toolCallId);
                   dispatch(
                     updateToolCallOutput({
                       toolCallId: applyState.toolCallId,
                       contextItems: [
                         {
                           name: "Edit Success",
-                          content: `Successfully edited ${applyState.filepath}`,
+                          content: multi
+                            ? `Applied:\n${multi.join("\n")}`
+                            : `Successfully edited ${applyState.filepath}`,
                           description: "",
                           hidden: true,
                         },

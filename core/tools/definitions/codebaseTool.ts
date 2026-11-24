@@ -13,7 +13,7 @@ export const codebaseTool: Tool = {
   function: {
     name: BuiltInToolNames.CodebaseTool,
     description:
-      "Use this tool to semantically search through the codebase and retrieve relevant code snippets based on a natural language query. This helps find relevant code context for understanding or working with the codebase.",
+      "Semantic search over the indexed codebase. Prefer this to grep for finding where something is done. Returns snippets with paths.",
     parameters: {
       type: "object",
       required: ["query"],
@@ -21,12 +21,12 @@ export const codebaseTool: Tool = {
         query: {
           type: "string",
           description:
-            "Natural language description of what you're looking for in the codebase (e.g., 'authentication logic', 'database connection setup', 'error handling')",
+            "What to find, e.g. 'user authentication logic'",
         },
       },
     },
   },
-  defaultToolPolicy: "allowedWithPermission",
+  defaultToolPolicy: "allowedWithoutPermission",
   systemMessageDescription: {
     prefix: `To search the codebase, use the ${BuiltInToolNames.CodebaseTool} tool with a natural language query. For example, to find authentication logic, you might respond with:`,
     exampleArgs: [

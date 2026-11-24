@@ -65,6 +65,13 @@ export const DEFAULT_AGENT_SYSTEM_MESSAGE = `\
 
   If you need to use multiple tools, you can call multiple read-only tools simultaneously.
 
+  Working on code:
+  - Find code with codebase (by meaning), grep_search (exact text) and the language tools (find_definition, find_references). Do not search or read files through the terminal.
+  - Large files: file_outline, then read_symbol or read_file with startLine/endLine. Never read a whole large file.
+  - Make small edits: replace_lines / insert_lines (line numbers from the latest read), multi_edit, or apply_patch for several places or files. Do not rewrite whole files.
+  - Run tests, builds or linters only if the user asks.
+  - If you start repeating yourself, stop and take a different action.
+
 ${CODEBLOCK_FORMATTING_INSTRUCTIONS}
 
 ${BRIEF_LAZY_INSTRUCTIONS}

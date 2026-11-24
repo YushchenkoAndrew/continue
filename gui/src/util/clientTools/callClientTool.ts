@@ -4,6 +4,9 @@ import { ContinueError, ContinueErrorReason } from "core/util/errors";
 import { IIdeMessenger } from "../../context/IdeMessenger";
 import { AppThunkDispatch, RootState } from "../../redux/store";
 import { editToolImpl } from "./editImpl";
+import { applyPatchImpl } from "./applyPatchImpl";
+import { insertLinesImpl, replaceLinesImpl } from "./lineEditImpls";
+import { renameSymbolImpl } from "./renameSymbolImpl";
 import { multiEditImpl } from "./multiEditImpl";
 import { singleFindAndReplaceImpl } from "./singleFindAndReplaceImpl";
 
@@ -48,6 +51,18 @@ export async function callClientTool(
         break;
       case BuiltInToolNames.MultiEdit:
         output = await multiEditImpl(parsedArgs, toolCall.id, extras);
+        break;
+      case BuiltInToolNames.ReplaceLines:
+        output = await replaceLinesImpl(parsedArgs, toolCall.id, extras);
+        break;
+      case BuiltInToolNames.InsertLines:
+        output = await insertLinesImpl(parsedArgs, toolCall.id, extras);
+        break;
+      case BuiltInToolNames.ApplyPatch:
+        output = await applyPatchImpl(parsedArgs, toolCall.id, extras);
+        break;
+      case BuiltInToolNames.RenameSymbol:
+        output = await renameSymbolImpl(parsedArgs, toolCall.id, extras);
         break;
       default:
         throw new Error(`Invalid client tool name ${toolCall.function.name}`);
