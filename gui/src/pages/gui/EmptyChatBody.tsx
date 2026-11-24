@@ -15,7 +15,7 @@ export function EmptyChatBody({ showOnboardingCard }: EmptyChatBodyProps) {
   }
 
   return (
-    <div className="mx-auto mt-4 flex w-full min-w-0 max-w-xl flex-col gap-3 px-3">
+    <div className="mx-auto mt-4 box-border flex min-w-0 max-w-xl flex-col gap-3 px-3">
       <div className="min-w-0">
         <h2 className="text-foreground m-0 text-base font-medium">
           How can I help?

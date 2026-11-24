@@ -1,16 +1,10 @@
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
 import { varWithFallback } from "../../styles/theme";
 
-// While the model is working the frame breathes between the neutral border and the theme's
-// focus colour, instead of cycling through a rainbow gradient.
-const pulse = keyframes`
-  0%, 100% {
-    background-color: var(--chat-border);
-  }
-  50% {
-    background-color: ${varWithFallback("border-focus")};
-  }
-`;
+// While the model is working, the frame of the message being processed is highlighted in the
+// theme's focus colour. It is steady (no blinking or moving) and does not change the box
+// size, so nothing shifts when a run starts or ends.
+const WORKING_BORDER = varWithFallback("border-focus");
 
 export const GradientBorder = styled.div<{
   borderRadius?: string;
@@ -20,16 +14,11 @@ export const GradientBorder = styled.div<{
   border-radius: ${(props) => props.borderRadius || "0"};
   padding: 1px;
   box-sizing: border-box; /* width: 100% must include the 1px border padding */
-  background-color: ${(props) => props.borderColor || "var(--chat-border)"};
-  animation: ${(props) => (props.loading ? pulse : "none")} 2.4s ease-in-out
-    infinite;
+  background-color: ${(props) =>
+    props.loading ? WORKING_BORDER : props.borderColor || "var(--chat-border)"};
+  transition: background-color 0.4s ease;
   width: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin-top: ${(props) => (props.loading ? "8px" : "")};
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
 `;

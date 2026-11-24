@@ -219,7 +219,7 @@ function TipTapEditorInner(props: TipTapEditorProps) {
         // Sent messages are a soft block rather than a second composer.
         props.isMainInput
           ? ""
-          : "!bg-chat-fill focus-within:!border-command-border-focus !border-transparent"
+          : "!bg-chat-surface focus-within:!border-command-border-focus !border-transparent"
       }`}
       onClick={() => {
         editor?.commands.focus();

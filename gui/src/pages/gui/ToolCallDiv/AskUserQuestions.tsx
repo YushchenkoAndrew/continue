@@ -91,7 +91,7 @@ export function AskUserQuestions({
               );
             })}
             <input
-              className="border-chat-border bg-input text-input-foreground focus:border-border-focus w-full rounded-md border border-solid px-2 py-1 text-xs"
+              className="border-chat-border bg-input text-input-foreground focus:border-border-focus box-border w-full rounded-md border border-solid px-2 py-1 text-xs"
               placeholder={
                 q.options.length ? "Or type your own answer" : "Your answer"
               }

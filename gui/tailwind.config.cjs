@@ -40,6 +40,7 @@ module.exports = {
         chat: {
           border: "var(--chat-border)",
           fill: "var(--chat-fill)",
+          surface: "var(--chat-surface)",
         },
         background: varWithFallback("background"),
         foreground: varWithFallback("foreground"),

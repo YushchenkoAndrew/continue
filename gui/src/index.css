@@ -29,6 +29,12 @@
     var(--vscode-editor-foreground, #e6e6e6) 6%,
     transparent
   );
+  /* Opaque version of the fill, for boxes that sit on top of a coloured frame. */
+  --chat-surface: color-mix(
+    in srgb,
+    var(--vscode-editor-foreground, #e6e6e6) 6%,
+    var(--vscode-sideBar-background, var(--vscode-editor-background, #1e1e1e))
+  );
   --chat-radius: 0.75rem;
 }
 
