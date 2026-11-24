@@ -21,6 +21,7 @@ import TimelineItem from "../../components/gui/TimelineItem";
 import { NewSessionButton } from "../../components/mainInput/belowMainInput/NewSessionButton";
 import ThinkingBlockPeek from "../../components/mainInput/belowMainInput/ThinkingBlockPeek";
 import ContinueInputBox from "../../components/mainInput/ContinueInputBox";
+import { OverflowProbe } from "../../components/OverflowProbe";
 import { PlanRoadmap } from "../../components/PlanRoadmap";
 import { ToolConfigNotice } from "../../components/ToolConfigNotice";
 import { useOnboardingCard } from "../../components/OnboardingCard";
@@ -387,6 +388,7 @@ export function Chat() {
 
   return (
     <>
+      <OverflowProbe />
       {!!showSessionTabs && !isInEdit && <TabBar ref={tabsRef} />}
       {widget}
 

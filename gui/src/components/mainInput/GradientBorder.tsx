@@ -16,6 +16,7 @@ export const GradientBorder = styled.div<{
 }>`
   border-radius: ${(props) => props.borderRadius || "0"};
   padding: 1px;
+  box-sizing: border-box; /* width: 100% must include the 1px border padding */
   background: ${(props) =>
     props.borderColor
       ? props.borderColor
