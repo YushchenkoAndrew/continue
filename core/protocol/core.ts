@@ -220,6 +220,8 @@ export type ToCoreFromIdeOrWebviewProtocol = {
     string,
   ];
   "llm/listModels": [{ title: string }, string[] | undefined];
+  /** Council: free the VRAM of the model `from` before running `to` (best effort). */
+  "llm/switchModel": [{ from: string; to: string }, boolean];
   "llm/streamChat": [
     {
       messages: ChatMessage[];

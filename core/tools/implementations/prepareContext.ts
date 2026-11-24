@@ -67,6 +67,16 @@ export function extractTaskTerms(task: string): {
   };
 }
 
+/** A long, generic task (a pasted QA case) embeds poorly: search with its head and key terms. */
+export function semanticQuery(
+  task: string,
+  terms: { paths: string[]; identifiers: string[] },
+): string {
+  if (task.length <= 400) return task;
+  const head = task.slice(0, 200).replace(/\s+/g, " ");
+  return `${head} ${[...terms.paths, ...terms.identifiers].join(" ")}`.trim();
+}
+
 function snippet(text: string, lines = 3): string {
   return text
     .split("\n")
@@ -170,7 +180,7 @@ export const prepareContextImpl: ToolImpl = async (args, extras) => {
   const focus = [...new Set([...given, ...mentioned])]
     .filter((f) => index.files.includes(f))
     .slice(0, 4);
-  const hits = await semantic(task, extras);
+  const hits = await semantic(semanticQuery(task, terms), extras);
 
   out.push("Relevant files:");
   const seen = new Set<string>();

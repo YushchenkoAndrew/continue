@@ -82,6 +82,10 @@ export interface Proposal {
   evidence: VerifiedEvidence[];
   /** True when the model output did not follow the requested structure. */
   malformed: boolean;
+  /** First part of what the model actually returned, for diagnosing bad output. */
+  raw?: string;
+  /** Size of the reasoning that came with it. */
+  thinkingChars?: number;
 }
 
 export interface Review {
@@ -161,6 +165,8 @@ export interface CouncilChatResponse {
   thinkingChars: number;
   /** True when the stream was cut by the length/loop guard. */
   truncated: boolean;
+  /** Why the local guard ended the call, if it did. */
+  loop?: "repetition" | "thinking-cap";
 }
 
 export interface FileInfo {
@@ -175,4 +181,6 @@ export interface CouncilRuntime {
   prepareContext(task: string, signal: AbortSignal): Promise<string>;
   fileInfo(path: string): Promise<FileInfo>;
   emit(event: CouncilEvent): void;
+  /** Called once the council is over: free the last council model if the agent uses another. */
+  release?(nextTitle: string | undefined): Promise<void>;
 }

@@ -184,6 +184,20 @@ function Details({ run }: { run: CouncilRunState }) {
             {p.risks.length > 0 && (
               <p className="m-0">Risks: {p.risks.join("; ")}</p>
             )}
+            {p.malformed && (
+              <div className="min-w-0">
+                <p className="m-0">
+                  Not in the requested format. What the model returned
+                  {p.thinkingChars
+                    ? ` (after ${fmtChars(p.thinkingChars)} chars of reasoning)`
+                    : ""}
+                  :
+                </p>
+                <pre className="bg-chat-surface m-0 mt-1 box-border max-h-40 min-w-0 max-w-full overflow-auto whitespace-pre-wrap break-words rounded p-1">
+                  {p.raw || "(empty)"}
+                </pre>
+              </div>
+            )}
           </div>
         </details>
       ))}

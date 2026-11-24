@@ -51,12 +51,38 @@ export function createGuiCouncilRuntime(opts: {
 }): CouncilRuntime {
   const { ideMessenger, emit } = opts;
   let workspaceDirs: string[] | undefined;
+  let lastTitle: string | undefined;
 
   async function chat(req: CouncilChatRequest): Promise<CouncilChatResponse> {
     if (req.signal.aborted) throw abortError();
 
+    // Moving to a different model: free the previous one's VRAM first (local llama.cpp
+    // router only; a no-op everywhere else).
+    const title = req.modelTitle ?? opts.defaultTitle;
+    if (lastTitle && lastTitle !== title) {
+      try {
+        await raceAbort(
+          ideMessenger.request("llm/switchModel", {
+            from: lastTitle,
+            to: title,
+          }),
+          req.signal,
+        );
+      } catch {
+        if (req.signal.aborted) throw abortError();
+      }
+    }
+    lastTitle = title;
+
     // Local guard: caps runaway reasoning and repetition, then ends only this call.
-    const guard = new LoopGuard(LoopGuard.thinkingCapChars(opts.contextLength));
+    // The server already enforces maxTokens, so the thinking cap must never sit below
+    // it (otherwise a larger council output limit could never be used for reasoning).
+    const guard = new LoopGuard(
+      Math.max(
+        LoopGuard.thinkingCapChars(opts.contextLength),
+        (req.maxTokens ?? 0) * 4,
+      ),
+    );
     const guardAbort = new AbortController();
     const forward = () => guardAbort.abort();
     req.signal.addEventListener("abort", forward, { once: true });
@@ -67,7 +93,7 @@ export function createGuiCouncilRuntime(opts: {
     try {
       const gen = ideMessenger.llmStreamChat(
         {
-          title: req.modelTitle ?? opts.defaultTitle,
+          title,
           modelTitle: req.modelTitle,
           messages: [
             { role: "system", content: req.system },
@@ -108,7 +134,12 @@ export function createGuiCouncilRuntime(opts: {
       req.signal.removeEventListener("abort", forward);
     }
     if (req.signal.aborted) throw abortError();
-    return { text, thinkingChars, truncated: !!guard.tripped };
+    return {
+      text,
+      thinkingChars,
+      truncated: !!guard.tripped,
+      loop: guard.tripped,
+    };
   }
 
   async function prepareContext(
@@ -157,5 +188,17 @@ export function createGuiCouncilRuntime(opts: {
     return { exists: false };
   }
 
-  return { chat, prepareContext, fileInfo, emit };
+  async function release(nextTitle: string | undefined): Promise<void> {
+    if (!lastTitle || !nextTitle || lastTitle === nextTitle) return;
+    try {
+      await ideMessenger.request("llm/switchModel", {
+        from: lastTitle,
+        to: nextTitle,
+      });
+    } catch {
+      // best effort
+    }
+  }
+
+  return { chat, prepareContext, fileInfo, emit, release };
 }

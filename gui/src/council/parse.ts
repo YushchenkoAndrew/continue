@@ -24,16 +24,18 @@ function headerOf(
   keys: readonly string[],
 ): { key: string; rest: string } | undefined {
   const names = keys.join("|");
-  // "SUMMARY: text", "**SUMMARY:** text", "- Summary: text"
-  const inline = new RegExp(
-    `^\\s*(?:[#>*_-]+\\s*)?\\**(${names})\\**\\s*[:：]\\s*\\**\\s*(.*)$`,
+  // Accepts "SUMMARY: x", "**SUMMARY:** x", "**SUMMARY**: x", "## Summary",
+  // "1. Summary:", "* **Summary:** x". A bullet counts as a prefix only before bold,
+  // so a step like "- Files: update a.ts" is not mistaken for a section.
+  const m = new RegExp(
+    `^\\s*(?:#{1,6}\\s*|\\d+[.)]\\s*|[-*•]\\s+(?=\\*\\*))*\\**(${names})\\**\\s*([:：])?\\s*\\**\\s*(.*)$`,
     "i",
   ).exec(line);
-  if (inline) return { key: inline[1].toUpperCase(), rest: inline[2].trim() };
-  // "## Steps"
-  const heading = new RegExp(`^\\s*#{1,4}\\s*(${names})\\s*$`, "i").exec(line);
-  if (heading) return { key: heading[1].toUpperCase(), rest: "" };
-  return undefined;
+  if (!m) return undefined;
+  const rest = m[3].trim();
+  // "Steps to take..." in prose has neither a colon nor an empty remainder
+  if (!m[2] && rest) return undefined;
+  return { key: m[1].toUpperCase(), rest };
 }
 
 function sectionsOf(

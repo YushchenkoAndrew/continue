@@ -76,6 +76,7 @@ import { shouldIgnore } from "./indexing/shouldIgnore";
 import { walkDirCache } from "./indexing/walkDir";
 import { LLMLogger } from "./llm/logger";
 import { llmStreamChat } from "./llm/streamChat";
+import { unloadRouterModel } from "./llm/unloadModel";
 import { BeforeAfterDiff } from "./nextEdit/context/diffFormatting";
 import { processSmallEdit } from "./nextEdit/context/processSmallEdit";
 import { PrefetchQueue } from "./nextEdit/NextEditPrefetchQueue";
@@ -592,6 +593,19 @@ export class Core {
       return completion;
     });
     on("llm/listModels", this.handleListModels.bind(this));
+
+    on("llm/switchModel", async (msg) => {
+      const { config } = await this.configHandler.loadConfig();
+      const chat = config?.modelsByRole.chat ?? [];
+      const find = (title: string) =>
+        chat.find((m) => m.title === title) ??
+        (config?.selectedModelByRole.chat?.title === title
+          ? config.selectedModelByRole.chat
+          : undefined);
+      const from = find(msg.data.from);
+      const to = find(msg.data.to);
+      return from && to ? await unloadRouterModel(from, to) : false;
+    });
 
     on("llm/compileChat", async (msg) => {
       const { messages, options } = msg.data;

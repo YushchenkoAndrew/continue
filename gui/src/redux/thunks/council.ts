@@ -75,13 +75,17 @@ export const runCouncilThunk = createAsyncThunk<
       ),
     });
 
-    return runCouncil({
-      task,
-      extraContext,
-      config,
-      runtime,
-      signal: state.session.streamAborter.signal,
-    });
+    try {
+      return await runCouncil({
+        task,
+        extraContext,
+        config,
+        runtime,
+        signal: state.session.streamAborter.signal,
+      });
+    } finally {
+      await runtime.release?.(selected?.title);
+    }
   },
 );
 

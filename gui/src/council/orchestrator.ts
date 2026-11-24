@@ -2,7 +2,12 @@ import { consolidate } from "./consolidate";
 import { isProposer } from "./defaults";
 import { decide, JUDGE_MAX_OVERRIDE, scoreProposals } from "./evaluation";
 import { verifyProposalEvidence } from "./evidence";
-import { parseJudge, parseProposal, parseReview } from "./parse";
+import {
+  cleanModelText,
+  parseJudge,
+  parseProposal,
+  parseReview,
+} from "./parse";
 import { judgeMessages, proposalMessages, reviewMessages } from "./prompts";
 import {
   CouncilAgent,
@@ -90,7 +95,7 @@ export async function runCouncil(args: RunCouncilArgs): Promise<CouncilResult> {
     agent: CouncilAgent,
     msgs: { system: string; user: string },
     idleStatus: CouncilAgentStatus,
-  ): Promise<string> => {
+  ): Promise<{ text: string; thinkingChars: number }> => {
     check();
     status(agent.id, "analyzing");
     let phase: CouncilAgentStatus = "analyzing";
@@ -126,12 +131,23 @@ export async function runCouncil(args: RunCouncilArgs): Promise<CouncilResult> {
       },
     });
     check();
-    if (res.truncated && !res.text.trim()) {
+    // An empty answer is a failure, not "Done": most often the model spent the
+    // whole output limit reasoning, so say that and what to change.
+    if (!cleanModelText(res.text)) {
+      const kb = (n: number) =>
+        n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+      if (res.loop === "repetition") {
+        throw new Error(
+          `no answer: the model started repeating itself and was stopped (${kb(res.thinkingChars)} chars of thinking).`,
+        );
+      }
       throw new Error(
-        "model produced no usable output (stopped by length guard)",
+        res.thinkingChars > 0 || res.truncated
+          ? `no answer: it spent its output limit thinking (${kb(res.thinkingChars)} chars). Raise council.context.maxOutputTokens or reduce reasoning.`
+          : "the model returned an empty answer",
       );
     }
-    return res.text;
+    return { text: res.text, thinkingChars: res.thinkingChars };
   };
 
   try {
@@ -193,12 +209,14 @@ export async function runCouncil(args: RunCouncilArgs): Promise<CouncilResult> {
     const evidenceCache = new Map();
     for (const agent of proposers) {
       try {
-        const text = await ask(
+        const { text, thinkingChars } = await ask(
           agent,
           proposalMessages(agent, task, context),
           "preparing",
         );
         let proposal = parseProposal(text, agent.id, "");
+        proposal.raw = text.trim().slice(0, 800);
+        proposal.thinkingChars = thinkingChars;
         proposal = await verifyProposalEvidence(
           proposal,
           runtime,
@@ -208,8 +226,10 @@ export async function runCouncil(args: RunCouncilArgs): Promise<CouncilResult> {
         runtime.emit({ type: "proposal", proposal });
         status(
           agent.id,
-          "completed",
-          proposal.malformed ? "unstructured answer" : undefined,
+          proposal.malformed ? "failed" : "completed",
+          proposal.malformed
+            ? "answer was not in the requested format"
+            : undefined,
         );
       } catch (e) {
         if (e instanceof CouncilAbort) throw e;
@@ -219,6 +239,20 @@ export async function runCouncil(args: RunCouncilArgs): Promise<CouncilResult> {
     }
     check();
 
+    const usable = authored.filter((a) => !a.proposal.malformed);
+    if (authored.length >= 2 && usable.length < 2) {
+      // Reviewing unstructured answers only burns time: say what came back instead.
+      return result({
+        outcome: "insufficient-evidence",
+        scores: [],
+        proposals: authored.map((a, i) => ({
+          ...a.proposal,
+          label: labelFor(i),
+        })),
+        reviews: [],
+        note: `Fewer than two answers followed the requested format, so the review was skipped (open the proposals to see what each model returned). Continuing with the normal agent.`,
+      });
+    }
     if (authored.length < 2) {
       return result({
         outcome: "fallback",
@@ -246,7 +280,7 @@ export async function runCouncil(args: RunCouncilArgs): Promise<CouncilResult> {
     }
     for (const reviewer of reviewers) {
       try {
-        const text = await ask(
+        const { text } = await ask(
           reviewer,
           reviewMessages(reviewer, task, context, proposals),
           "reviewing",
@@ -307,7 +341,7 @@ export async function runCouncil(args: RunCouncilArgs): Promise<CouncilResult> {
               `${s.label}: ${s.total}/10 (${s.evidenceVerified}/${s.evidenceTotal} references verified)`,
           )
           .join("\n");
-        const text = await ask(
+        const { text } = await ask(
           judge,
           judgeMessages(judge, task, proposals, summary),
           "reviewing",
