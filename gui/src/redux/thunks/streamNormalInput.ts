@@ -446,7 +446,7 @@ export const streamNormalInput = createAsyncThunk<
 
     // 2b. A plan step for an edit may not be marked done before anything was changed
     for (const tc of selectPendingToolCalls(getState()).filter(
-      (c) => c.toolCall.function.name === BuiltInToolNames.UpdatePlan,
+      (c) => c.toolCall.function?.name === BuiltInToolNames.UpdatePlan,
     )) {
       const problem = unearnedCompletion(
         getState().session.history,

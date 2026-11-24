@@ -37,7 +37,7 @@ const QUERY_KEYS = ["query", "pattern", "regex", "text"];
 const SYMBOL_KEYS = ["symbol", "name", "symbolName"];
 
 export function describeToolCall(st: ToolCallState): string {
-  const name = st.toolCall.function.name;
+  const name = st.toolCall.function?.name;
   const args = (st.parsedArgs ?? {}) as Record<string, unknown>;
   const file = base(pick(args, FILE_KEYS));
   const query = short(pick(args, QUERY_KEYS));
@@ -159,7 +159,7 @@ export function selectActivityTitle(state: RootState): string | undefined {
   const previous = lastToolState(turn);
   if (!previous) return "Analyzing the request";
   if (isChangeMade(previous)) return "Reviewing the changes";
-  if (previous.toolCall.function.name === T.UpdatePlan) {
+  if (previous.toolCall.function?.name === T.UpdatePlan) {
     return plan?.steps.some((s) => s.status === "pending")
       ? "Starting the next step"
       : "Reviewing the changes";

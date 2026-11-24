@@ -421,7 +421,18 @@ export function Chat() {
       </StepsDiv>
       <div className={"relative shrink-0"}>
         <ToolConfigNotice />
-        <PlanRoadmap />
+        <ErrorBoundary
+          fallbackRender={({ error }) => (
+            <div
+              className="text-error mx-2 mb-1 truncate text-xs"
+              title={String(error?.message ?? error)}
+            >
+              Progress panel error: {String(error?.message ?? error)}
+            </div>
+          )}
+        >
+          <PlanRoadmap />
+        </ErrorBoundary>
         <ContinueInputBox
           isMainInput
           isLastUserInput={false}

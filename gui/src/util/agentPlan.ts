@@ -66,7 +66,7 @@ export function findLatestPlan(
     for (let j = states.length - 1; j >= 0; j--) {
       const st = states[j];
       if (
-        st.toolCall.function.name !== BuiltInToolNames.UpdatePlan ||
+        st.toolCall.function?.name !== BuiltInToolNames.UpdatePlan ||
         st.status !== "done"
       ) {
         continue;
@@ -93,7 +93,7 @@ export function lastPlanUpdateIndex(history: ChatHistoryItem[]): number {
     if (
       (history[i].toolCallStates ?? []).some(
         (st) =>
-          st.toolCall.function.name === BuiltInToolNames.UpdatePlan &&
+          st.toolCall.function?.name === BuiltInToolNames.UpdatePlan &&
           st.status === "done",
       )
     ) {
@@ -109,6 +109,7 @@ const NOT_PROGRESS_TOOLS = new Set<string>([
   BuiltInToolNames.SaveTaskState,
   BuiltInToolNames.UpdateProjectMemory,
   BuiltInToolNames.CreateRuleBlock,
+  BuiltInToolNames.RequestRule,
 ]);
 
 /**
@@ -119,7 +120,7 @@ const NOT_PROGRESS_TOOLS = new Set<string>([
 export function isChangeMade(st: ToolCallState): boolean {
   return (
     st.status === "done" &&
-    !NOT_PROGRESS_TOOLS.has(st.toolCall.function.name) &&
+    !NOT_PROGRESS_TOOLS.has(st.toolCall.function?.name ?? "") &&
     !!st.tool &&
     !st.tool.readonly
   );
@@ -144,7 +145,7 @@ export function countReads(items: ChatHistoryItem[]): number {
       if (
         st.status === "done" &&
         st.tool?.readonly &&
-        !NOT_PROGRESS_TOOLS.has(st.toolCall.function.name)
+        !NOT_PROGRESS_TOOLS.has(st.toolCall.function?.name ?? "")
       ) {
         n++;
       }
@@ -156,7 +157,7 @@ export function countReads(items: ChatHistoryItem[]): number {
 export function usedTool(items: ChatHistoryItem[], name: string): boolean {
   return items.some((item) =>
     (item.toolCallStates ?? []).some(
-      (st) => st.toolCall.function.name === name,
+      (st) => st.toolCall.function?.name === name,
     ),
   );
 }

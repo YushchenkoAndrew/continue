@@ -54,7 +54,7 @@ const PHASE_REVIEW = "Review the changes";
 const PHASE_REPORT = "Report what was done";
 
 function isReadOnlyProgress(st: ToolCallState): boolean {
-  const name = st.toolCall.function.name;
+  const name = st.toolCall.function?.name;
   return (
     st.status === "done" &&
     !!st.tool?.readonly &&
@@ -106,7 +106,7 @@ export function deriveAgentRun(
         failed++;
       }
       if (
-        st.toolCall.function.name === BuiltInToolNames.AskUser &&
+        st.toolCall.function?.name === BuiltInToolNames.AskUser &&
         WAITING.has(st.status)
       ) {
         asking = true;
