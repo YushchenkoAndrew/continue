@@ -300,6 +300,16 @@ export default async function doLoadConfig(options: {
     })),
   );
 
+  // A tool definition that failed to load (a missing export) must not take the whole config down.
+  const missingTools = newConfig.tools.filter((t) => !t?.function).length;
+  if (missingTools > 0) {
+    newConfig.tools = newConfig.tools.filter((t) => !!t?.function);
+    errors!.push({
+      fatal: false,
+      message: `${missingTools} built-in tool definition(s) are undefined and were skipped. Check the exports in core/tools/definitions/index.ts.`,
+    });
+  }
+
   // A built-in tool registered twice (for example by a stale reload) is collapsed to one.
   const seenBuiltIn = new Set<string>();
   const builtInNames = new Set<string>(Object.values(BuiltInToolNames));

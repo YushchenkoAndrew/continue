@@ -31,6 +31,7 @@ export {
   renameSymbolTool,
 } from "./languageIntel";
 export { applyPatchTool } from "./applyPatch";
+export { askUserTool, updatePlanTool } from "./planning";
 export {
   getProjectMemoryTool,
   getTaskStateTool,
