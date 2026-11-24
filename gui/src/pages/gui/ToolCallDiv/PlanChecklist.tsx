@@ -46,7 +46,9 @@ export function PlanChecklist({
   return (
     <div className="text-description flex flex-col gap-1 px-3 py-2 text-xs">
       <div className="flex items-center gap-1 font-semibold">
-        {getStatusIcon(toolCallState.status)}
+        <div className="h-3 w-3 flex-shrink-0">
+          {getStatusIcon(toolCallState.status)}
+        </div>
         <span>
           Progress: {done}/{total}
         </span>
