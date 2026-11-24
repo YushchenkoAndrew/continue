@@ -60,7 +60,7 @@ export function PlanChecklist({
           className={`flex gap-1.5 ${s.status === "done" ? "line-through opacity-60" : ""} ${s.status === "in_progress" ? "font-semibold" : ""}`}
         >
           <span className="w-4 flex-shrink-0">{GLYPH[s.status]}</span>
-          <span className="min-w-0 break-words">{s.text}</span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">{s.text}</span>
         </div>
       ))}
     </div>

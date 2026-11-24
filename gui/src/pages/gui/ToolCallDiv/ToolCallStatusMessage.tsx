@@ -53,8 +53,9 @@ export function ToolCallStatusMessage({
 
   return (
     <div
-      className="text-description line-clamp-4 min-w-0 break-words"
+      className="text-description line-clamp-4 min-w-0 max-w-full [overflow-wrap:anywhere]"
       data-testid="tool-call-title"
+      title={`Continue ${intro} ${message}`}
     >
       {`Continue ${intro} ${message}`}
     </div>

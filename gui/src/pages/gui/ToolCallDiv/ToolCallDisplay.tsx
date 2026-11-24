@@ -35,9 +35,9 @@ export function ToolCallDisplay({
     }
   }
   return (
-    <div className="flex flex-col justify-center px-4">
+    <div className="flex min-w-0 max-w-full flex-col justify-center px-4">
       <div className="mb-2 flex flex-col">
-        <div className="flex flex-row items-start justify-between gap-1.5">
+        <div className="flex min-w-0 flex-row items-start justify-between gap-1.5">
           <div
             className={`flex min-w-0 flex-row items-center gap-2 transition-colors duration-200 ease-in-out ${
               isClickable ? "cursor-pointer hover:brightness-125" : ""

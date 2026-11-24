@@ -58,13 +58,15 @@ export function AskUserQuestions({
         const d = draftFor(i);
         return (
           <div key={i} className="flex flex-col gap-1">
-            <div className="break-words font-semibold">{q.question}</div>
+            <div className="font-semibold [overflow-wrap:anywhere]">
+              {q.question}
+            </div>
             {q.options.map((opt, k) => {
               const checked = d.picked.includes(k);
               return (
                 <label
                   key={k}
-                  className="flex min-w-0 cursor-pointer items-center gap-2 break-words text-xs"
+                  className="flex min-w-0 cursor-pointer items-center gap-2 text-xs [overflow-wrap:anywhere]"
                 >
                   <input
                     type={q.multiple ? "checkbox" : "radio"}

@@ -31,12 +31,25 @@ async function readIfExists(ide: IDE, uri: string): Promise<string> {
   }
 }
 
+/**
+ * Plan fields describe the work; they are not the place to reject a model over formatting.
+ * Code fences and extra lines are flattened and long text is cut, so one verbose "approach"
+ * cannot stop the whole plan (and the progress panel) from being created. Secrets still fail.
+ */
+function tidy(text: string, max = 280): string {
+  return text
+    .replace(/```[\s\S]*?```/g, " (code omitted) ")
+    .replace(/```/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
 function strings(value: unknown, section: string, max = 12): string[] {
   const list = (Array.isArray(value) ? value : [value])
-    .map((x) => String(x).trim())
+    .map((x) => tidy(String(x)))
     .filter(Boolean);
-  return list.slice(0, max).map((t) => {
-    const text = t.slice(0, 280);
+  return list.slice(0, max).map((text) => {
     const problem = validateEntryText(text);
     if (problem) throw new Error(`${section}: ${problem}`);
     return text;
@@ -50,10 +63,7 @@ const key = (text: string) =>
     .trim();
 
 function cleanNote(value: unknown, where: string): string {
-  const note = String(value ?? "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_NOTE_CHARS);
+  const note = tidy(String(value ?? ""), MAX_NOTE_CHARS);
   if (!note)
     throw new Error(`${where} is blocked: add a short note saying why.`);
   const problem = validateEntryText(note);
@@ -72,9 +82,10 @@ function buildSteps(raw: unknown, existing: PlanStep[]): PlanStep[] {
     );
   const previous = new Map(existing.map((s) => [key(s.text), s]));
   return raw.map((item: any) => {
-    let text = String(typeof item === "string" ? item : (item?.text ?? ""))
-      .trim()
-      .slice(0, MAX_STEP_CHARS);
+    let text = tidy(
+      String(typeof item === "string" ? item : (item?.text ?? "")),
+      MAX_STEP_CHARS,
+    );
     if (!text) throw new Error("Every step needs text.");
     const after = Array.isArray(item?.after)
       ? item.after.filter((n: unknown) => Number.isInteger(n)).slice(0, 4)
@@ -157,9 +168,9 @@ export const updatePlanImpl: ToolImpl = async (args, extras) => {
   const put = (section: string, items: string[]) => {
     doc[section] = items.map((text) => ({ status: "" as const, text }));
   };
-  if (typeof args?.objective === "string" && args.objective.trim())
-    put("objective", strings(args.objective, "objective"));
-  if (typeof args?.approach === "string" && args.approach.trim())
+  if (args?.objective !== undefined && String(args.objective).trim())
+    put("objective", strings(args.objective, "objective", 1));
+  if (args?.approach !== undefined && String(args.approach).trim())
     put("approach", strings(args.approach, "approach"));
   if (args?.files !== undefined) put("files", strings(args.files, "files", 25));
   if (args?.risks !== undefined) put("risks", strings(args.risks, "risks"));

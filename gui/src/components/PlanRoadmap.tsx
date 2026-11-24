@@ -1,32 +1,54 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { PlanStep } from "core/tools/memory/plan";
 import { useMemo, useState } from "react";
 import { useAppSelector } from "../redux/hooks";
-import {
-  findLatestPlan,
-  PlanSnapshot,
-  planFromContent,
-} from "../util/agentPlan";
 import { selectActivityTitle } from "../util/activityTitle";
+import {
+  AgentRun,
+  deriveAgentRun,
+  RunStatus,
+  StepState,
+} from "../util/agentRun";
 
-// Selectors return strings only, so the panel re-renders when the plan or the activity
-// changes, not on every streamed token.
-const GLYPH: Record<PlanStep["status"], string> = {
+// The selectors return strings only, so the panel re-renders when the task state or the
+// activity changes, not on every streamed token.
+const GLYPH: Record<StepState, string> = {
   done: "✓",
-  in_progress: "●",
+  active: "●",
   pending: "○",
   blocked: "!",
+  failed: "✗",
 };
-const GLYPH_COLOR: Record<PlanStep["status"], string> = {
+const GLYPH_COLOR: Record<StepState, string> = {
   done: "var(--vscode-charts-green, #3fb950)",
-  in_progress: "var(--vscode-progressBar-background, #0e70c0)",
+  active: "var(--vscode-progressBar-background, #0e70c0)",
   pending: "var(--vscode-descriptionForeground)",
   blocked: "var(--vscode-list-warningForeground, #cca700)",
+  failed: "var(--vscode-errorForeground, #f14c4c)",
+};
+const STATE_LABEL: Record<StepState, string> = {
+  done: "Completed",
+  active: "In progress",
+  pending: "Pending",
+  blocked: "Blocked",
+  failed: "Failed",
+};
+const STATUS_LABEL: Record<RunStatus, string> = {
+  running: "Executing",
+  waiting_input: "Waiting for your input",
+  paused: "Paused",
+  failed: "Failed",
+  completed: "Completed",
 };
 
-function ProgressBar({ plan }: { plan: PlanSnapshot }) {
-  const pct = plan.total ? Math.round((plan.done / plan.total) * 100) : 0;
-  const hasBlocked = plan.steps.some((s) => s.status === "blocked");
+function ProgressBar({ run }: { run: AgentRun }) {
+  const pct = run.total ? Math.round((run.done / run.total) * 100) : 0;
+  const color = run.steps.some((s) => s.state === "failed")
+    ? GLYPH_COLOR.failed
+    : run.steps.some((s) => s.state === "blocked")
+      ? GLYPH_COLOR.blocked
+      : run.status === "completed"
+        ? GLYPH_COLOR.done
+        : GLYPH_COLOR.active;
   return (
     <div
       className="h-1 w-full overflow-hidden rounded"
@@ -41,56 +63,63 @@ function ProgressBar({ plan }: { plan: PlanSnapshot }) {
     >
       <div
         className="h-full transition-all duration-300"
-        style={{
-          width: `${pct}%`,
-          backgroundColor: hasBlocked
-            ? GLYPH_COLOR.blocked
-            : plan.complete
-              ? GLYPH_COLOR.done
-              : GLYPH_COLOR.in_progress,
-        }}
+        style={{ width: `${pct}%`, backgroundColor: color }}
       />
     </div>
   );
 }
 
 /**
- * Roadmap of the agent's plan, shown above the input so it stays visible while the agent
- * works. It reads the structured update_plan results already in the chat; the agent is not
- * asked to resend or reconstruct it.
+ * Progress overview above the input. It shows the derived execution state of the task (see
+ * util/agentRun.ts), not text written by the model: a step is "Completed" only after the work
+ * behind it happened. Small tasks get a one-line summary instead of a roadmap.
  */
 export function PlanRoadmap() {
   const mode = useAppSelector((s) => s.session.mode);
-  const content = useAppSelector(
-    (s) => findLatestPlan(s.session.history)?.content,
-  );
+  const key = useAppSelector((s) => {
+    const run = deriveAgentRun(s.session.history, s.session.isStreaming);
+    return run ? JSON.stringify(run) : "";
+  });
   const activity = useAppSelector(selectActivityTitle);
   const [open, setOpen] = useState(true);
 
-  const plan = useMemo(
-    () => (content ? planFromContent(content) : undefined),
-    [content],
+  const run = useMemo<AgentRun | undefined>(
+    () => (key ? (JSON.parse(key) as AgentRun) : undefined),
+    [key],
   );
 
-  if (mode !== "agent" || !plan) return null;
+  if (mode !== "agent" || !run) return null;
 
-  const current = plan.steps.find((s) => s.status === "in_progress");
-  const next = plan.steps.find((s) => s.status === "pending");
-  const blocked = plan.steps.filter((s) => s.status === "blocked");
-  const markersLeft = plan.done === plan.total && !plan.complete;
-  const status = plan.complete
-    ? "Complete"
-    : markersLeft
-      ? "Steps done, unfinished markers remain"
-      : blocked.length
-        ? `${blocked.length} blocked`
-        : activity
-          ? undefined
-          : "Paused";
+  // Small tasks: a lightweight line, no roadmap.
+  const compact =
+    !run.hasPlan && run.reads + run.changes < 3 && run.status === "running";
+  const active = run.steps.find(
+    (s) => s.state === "active" || s.state === "failed",
+  );
+  const blocked = run.steps.filter((s) => s.state === "blocked");
+  const header = `Agent task — ${
+    blocked.length && run.status !== "running"
+      ? `${blocked.length} blocked`
+      : STATUS_LABEL[run.status]
+  }`;
+
+  if (compact) {
+    return (
+      <div
+        className="border-border text-description mx-2 mb-1 min-w-0 truncate rounded border border-solid px-2 py-1 text-xs"
+        style={{ backgroundColor: "var(--vscode-editor-background)" }}
+        data-testid="plan-roadmap"
+        title={activity}
+      >
+        {header}
+        {activity ? ` · ${activity}` : ""}
+      </div>
+    );
+  }
 
   return (
     <div
-      className="border-border mx-2 mb-1 rounded border border-solid text-xs"
+      className="border-border mx-2 mb-1 min-w-0 rounded border border-solid text-xs"
       style={{ backgroundColor: "var(--vscode-editor-background)" }}
       data-testid="plan-roadmap"
     >
@@ -104,47 +133,61 @@ export function PlanRoadmap() {
         ) : (
           <ChevronRightIcon className="h-3 w-3 flex-shrink-0" />
         )}
-        <span className="flex-shrink-0 font-semibold">
-          Implementation Progress
+        <span className="min-w-0 truncate font-semibold" title={header}>
+          {header}
         </span>
-        <span className="text-description flex-shrink-0">
-          {plan.done}/{plan.total}
+        <span className="text-description ml-auto flex-shrink-0 font-semibold">
+          {run.done} / {run.total}
         </span>
-        {status && (
-          <span className="text-description min-w-0 truncate">· {status}</span>
-        )}
       </button>
 
       <div className="px-2 pb-1">
-        <ProgressBar plan={plan} />
+        <ProgressBar run={run} />
       </div>
 
-      {!open && (current ?? next) && (
+      {!open && active && (
         <div
           className="text-description truncate px-2 pb-1"
-          title={(current ?? next)?.text}
+          title={active.label}
         >
-          {current ? "Now: " : "Next: "}
-          {(current ?? next)?.text}
+          {active.state === "failed" ? "Failed: " : "Now: "}
+          {active.label}
         </div>
       )}
 
       {open && (
         <div className="max-h-44 overflow-y-auto px-2 pb-1">
-          {plan.steps.map((s, i) => (
+          {run.steps.map((s, i) => (
             <div
               key={i}
-              className={`flex min-w-0 gap-1.5 py-0.5 ${s.status === "in_progress" ? "font-semibold" : ""} ${s.status === "done" ? "opacity-70" : ""}`}
+              className={`flex min-w-0 gap-1.5 py-0.5 ${s.state === "active" ? "font-semibold" : ""} ${s.state === "done" ? "opacity-70" : ""}`}
             >
               <span
                 className="w-3 flex-shrink-0 text-center"
-                style={{ color: GLYPH_COLOR[s.status] }}
+                style={{ color: GLYPH_COLOR[s.state] }}
+                title={STATE_LABEL[s.state]}
               >
-                {GLYPH[s.status]}
+                {GLYPH[s.state]}
               </span>
-              <div className="min-w-0 break-words">
-                {s.text}
-                {s.status === "blocked" && s.note && (
+              <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                <span>{s.label}</span>
+                {s.state !== "pending" && s.state !== "done" && (
+                  <span className="text-description font-normal">
+                    {" "}
+                    — {STATE_LABEL[s.state]}
+                  </span>
+                )}
+                {s.state === "active" &&
+                  activity &&
+                  run.status === "running" && (
+                    <div
+                      className="text-description truncate font-normal"
+                      title={activity}
+                    >
+                      {activity}
+                    </div>
+                  )}
+                {s.state === "blocked" && s.note && (
                   <div
                     className="font-normal"
                     style={{ color: GLYPH_COLOR.blocked }}
@@ -155,11 +198,6 @@ export function PlanRoadmap() {
               </div>
             </div>
           ))}
-          {activity && (
-            <div className="text-description border-border mt-1 break-words border-0 border-t border-solid pt-1">
-              Currently working: {activity}
-            </div>
-          )}
         </div>
       )}
     </div>
