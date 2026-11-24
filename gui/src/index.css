@@ -18,6 +18,18 @@
 
 :root {
   --example-var: rgb(30, 30, 30);
+  /* Chat surfaces: derived from the active VS Code theme, so they follow light/dark/high-contrast. */
+  --chat-border: color-mix(
+    in srgb,
+    var(--vscode-editor-foreground, #e6e6e6) 16%,
+    transparent
+  );
+  --chat-fill: color-mix(
+    in srgb,
+    var(--vscode-editor-foreground, #e6e6e6) 6%,
+    transparent
+  );
+  --chat-radius: 0.75rem;
 }
 
 html,

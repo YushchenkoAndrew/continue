@@ -36,10 +36,10 @@ export function ToolCallDisplay({
   }
   return (
     <div className="flex min-w-0 max-w-full flex-col justify-center px-4">
-      <div className="mb-2 flex flex-col">
+      <div className="mb-1 flex flex-col">
         <div className="flex min-w-0 flex-row items-start justify-between gap-1.5">
           <div
-            className={`flex min-w-0 flex-row items-center gap-2 transition-colors duration-200 ease-in-out ${
+            className={`text-description flex min-w-0 flex-row items-center gap-2 text-xs transition-colors duration-200 ease-in-out ${
               isClickable ? "cursor-pointer hover:brightness-125" : ""
             }`}
             onClick={isClickable ? handleClick : undefined}

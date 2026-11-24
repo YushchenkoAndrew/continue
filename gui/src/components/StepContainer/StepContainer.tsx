@@ -77,7 +77,7 @@ export default function StepContainer(props: StepContainerProps) {
   return (
     <div>
       <div
-        className={`bg-background p-1 px-1.5 ${isBeforeLatestSummary ? "opacity-35" : ""}`}
+        className={`bg-background px-1.5 py-2 ${isBeforeLatestSummary ? "opacity-35" : ""}`}
       >
         {uiConfig?.displayRawMarkdown ? (
           <pre className="text-2xs max-w-full overflow-x-auto whitespace-pre-wrap break-words p-4">
@@ -106,7 +106,7 @@ export default function StepContainer(props: StepContainerProps) {
 
       {showResponseActions && (
         <div
-          className={`mt-2 h-7 transition-opacity duration-300 ease-in-out ${isBeforeLatestSummary || isStreaming ? "opacity-35" : ""} ${isStreaming && "pointer-events-none cursor-not-allowed"}`}
+          className={`mt-0.5 h-6 transition-opacity duration-300 ease-in-out ${isBeforeLatestSummary || isStreaming ? "opacity-35" : ""} ${isStreaming && "pointer-events-none cursor-not-allowed"}`}
         >
           <ResponseActions
             isTruncated={isTruncated}

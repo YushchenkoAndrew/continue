@@ -107,7 +107,7 @@ export function ToolCallDiv({
 
   if (shouldShowGroupedUI) {
     return (
-      <div className="border-border rounded-lg border px-4 py-3 pb-0">
+      <div className="border-chat-border rounded-chat mx-2 my-1 min-w-0 max-w-full border px-3 pb-0 pt-2">
         <GroupedToolCallHeader
           toolCallStates={toolCallStates}
           activeCalls={pendingCalls.length > 0 ? pendingCalls : activeCalls}
@@ -120,7 +120,7 @@ export function ToolCallDiv({
           }`}
         >
           {toolCallStates.map((toolCallState) => (
-            <div className="py-1 pl-6" key={toolCallState.toolCallId}>
+            <div className="py-0.5 pl-5" key={toolCallState.toolCallId}>
               {renderToolCall(toolCallState)}
             </div>
           ))}
@@ -130,7 +130,7 @@ export function ToolCallDiv({
   }
 
   return toolCallStates.map((toolCallState) => (
-    <div className="py-1" key={toolCallState.toolCallId}>
+    <div className="py-0.5" key={toolCallState.toolCallId}>
       {renderToolCall(toolCallState)}
     </div>
   ));

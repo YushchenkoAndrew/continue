@@ -137,15 +137,16 @@ export function ToolConfigNotice() {
   };
 
   const button =
-    "bg-input text-foreground border-border cursor-pointer rounded border border-solid px-2 py-0.5 text-xs hover:opacity-80 disabled:cursor-default disabled:opacity-50";
+    "text-description hover:text-foreground cursor-pointer rounded border-none bg-transparent px-1.5 py-0.5 text-xs disabled:cursor-default disabled:opacity-50";
+  const primaryButton =
+    "bg-primary text-primary-foreground cursor-pointer rounded border-none px-2 py-0.5 text-xs hover:brightness-110 disabled:cursor-default disabled:opacity-50";
 
   return (
     <div
-      className="border-border mx-2 mb-1 min-w-0 rounded border border-solid px-2 py-1.5 text-xs"
-      style={{ backgroundColor: "var(--vscode-editor-background)" }}
+      className="border-chat-border bg-chat-fill rounded-chat mx-2 mb-1.5 min-w-0 border border-solid px-3 py-2 text-xs"
       data-testid="tool-config-notice"
     >
-      <div className="text-foreground font-semibold">
+      <div className="text-foreground font-medium">
         {newTools.length
           ? "New agent tools available"
           : "Agent tools need a setting"}
@@ -175,7 +176,7 @@ export function ToolConfigNotice() {
               <div className="text-description mt-1">
                 Adds to {baseName(report.file)} under the model:
               </div>
-              <pre className="bg-input m-0 mt-0.5 max-w-full overflow-x-auto rounded p-1">
+              <pre className="bg-chat-fill m-0 mt-0.5 max-w-full overflow-x-auto rounded p-1.5">
                 {report.added}
               </pre>
             </>
@@ -184,7 +185,7 @@ export function ToolConfigNotice() {
               <div className="text-description mt-1">
                 This file cannot be edited automatically. Add:
               </div>
-              <pre className="bg-input m-0 mt-0.5 max-w-full overflow-x-auto rounded p-1">
+              <pre className="bg-chat-fill m-0 mt-0.5 max-w-full overflow-x-auto rounded p-1.5">
                 {report.manual}
               </pre>
             </>
@@ -193,12 +194,12 @@ export function ToolConfigNotice() {
       )}
       {message && <div className="mt-1 whitespace-pre-wrap">{message}</div>}
 
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center gap-1">
         <button className={button} onClick={() => setReview((v) => !v)}>
           Review changes
         </button>
         {report.editable && !report.result && (
-          <button className={button} onClick={update} disabled={busy}>
+          <button className={primaryButton} onClick={update} disabled={busy}>
             {busy ? "Updating…" : "Update configuration"}
           </button>
         )}

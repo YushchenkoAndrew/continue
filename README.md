@@ -100,6 +100,10 @@ When that applies, a notice appears above the input with **Review changes**, **U
 - **Later** hides the notice for a day. A change you applied or dismissed is never offered again, and a configuration that already works shows nothing.
 - If the file cannot be edited (read-only, managed by Nix or Home Manager, or the model comes from a hub block), the notice shows the lines to add by hand instead. Edit your Nix source to include `capabilities: [tool_use]` for the model.
 
+## Chat appearance
+
+The chat panel uses a quiet, text-first layout that follows the active VS Code theme (light, dark or high contrast); no colours are hard-coded. Messages and the composer use a thin neutral border and a faint fill derived from the editor foreground (`--chat-border`, `--chat-fill`, `--chat-radius` in `gui/src/index.css`). Sent messages are a soft block, tool calls and thinking are single muted lines, and while the model is working the composer border pulses once per couple of seconds instead of cycling through colours. The progress panel, tool-configuration notice and `ask_user` form share the same surface. A one-line header above an ongoing conversation shows its title, the model and a "new session" button. With no bookmarked slash commands the empty chat offers four starting points that only fill the composer. In a wide editor tab the conversation is kept to a readable width. No setting is needed.
+
 ## Autocomplete
 
 The prompt format (FIM) and the number of tokens are unchanged; what changed is what fills the existing budget and how long it takes to gather.

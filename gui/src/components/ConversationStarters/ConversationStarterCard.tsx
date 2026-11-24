@@ -1,4 +1,3 @@
-import { ChatBubbleLeftIcon } from "@heroicons/react/24/outline";
 import { SlashCommandDescWithSource } from "core";
 
 interface ConversationStarterCardProps {
@@ -11,21 +10,17 @@ export function ConversationStarterCard({
   onClick,
 }: ConversationStarterCardProps) {
   return (
-    <div
-      className="bg-vsc-input-background mb-2 w-full rounded-md shadow-md hover:cursor-pointer hover:brightness-110"
+    <button
+      type="button"
+      className="border-chat-border text-foreground hover:bg-chat-fill rounded-chat mb-1.5 block w-full min-w-0 cursor-pointer border border-solid bg-transparent px-3 py-2 text-left transition-colors duration-150"
       onClick={() => onClick(command)}
     >
-      <div className="flex px-3 py-1.5">
-        <div className="mr-3 flex-shrink-0 self-start pt-0.5">
-          <ChatBubbleLeftIcon className="text-lightgray h-5 w-5" />
+      <div className="truncate text-xs font-medium">{command.name}</div>
+      {command.description && (
+        <div className="text-description line-clamp-2 text-xs [overflow-wrap:anywhere]">
+          {command.description}
         </div>
-        <div className="flex flex-1 flex-col justify-center">
-          <div className="text-xs font-medium">{command.name}</div>
-          {command.description && (
-            <div className="text-lightgray text-xs">{command.description}</div>
-          )}
-        </div>
-      </div>
-    </div>
+      )}
+    </button>
   );
 }

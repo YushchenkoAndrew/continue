@@ -53,12 +53,12 @@ export function AskUserQuestions({
   const ready = questions.every((_, i) => answerFor(i) !== "");
 
   return (
-    <div className="flex flex-col gap-3 px-3 py-2 text-sm">
+    <div className="border-chat-border bg-chat-fill rounded-chat mx-2 my-1 flex min-w-0 flex-col gap-3 border border-solid px-3 py-2.5 text-sm">
       {questions.map((q, i) => {
         const d = draftFor(i);
         return (
           <div key={i} className="flex flex-col gap-1">
-            <div className="font-semibold [overflow-wrap:anywhere]">
+            <div className="font-medium [overflow-wrap:anywhere]">
               {q.question}
             </div>
             {q.options.map((opt, k) => {
@@ -69,6 +69,7 @@ export function AskUserQuestions({
                   className="flex min-w-0 cursor-pointer items-center gap-2 text-xs [overflow-wrap:anywhere]"
                 >
                   <input
+                    className="accent-primary"
                     type={q.multiple ? "checkbox" : "radio"}
                     name={`${toolCallState.toolCallId}-${i}`}
                     checked={checked}
@@ -90,7 +91,7 @@ export function AskUserQuestions({
               );
             })}
             <input
-              className="border-border bg-input text-input-foreground w-full rounded border px-2 py-1 text-xs"
+              className="border-chat-border bg-input text-input-foreground focus:border-border-focus w-full rounded-md border border-solid px-2 py-1 text-xs"
               placeholder={
                 q.options.length ? "Or type your own answer" : "Your answer"
               }

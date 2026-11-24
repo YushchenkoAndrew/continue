@@ -23,6 +23,7 @@ import ThinkingBlockPeek from "../../components/mainInput/belowMainInput/Thinkin
 import ContinueInputBox from "../../components/mainInput/ContinueInputBox";
 import { OverflowProbe } from "../../components/OverflowProbe";
 import { PlanRoadmap } from "../../components/PlanRoadmap";
+import { ChatHeader } from "../../components/ChatHeader";
 import { ToolConfigNotice } from "../../components/ToolConfigNotice";
 import { useOnboardingCard } from "../../components/OnboardingCard";
 import StepContainer from "../../components/StepContainer";
@@ -85,6 +86,13 @@ const StepsDiv = styled.div`
     margin: 0 0 0 1px;
     min-width: 0;
     max-width: 100%;
+  }
+
+  /* Comfortable reading width when the chat is opened in a wide editor area. */
+  & > * {
+    max-width: 48rem;
+    margin-left: auto;
+    margin-right: auto;
   }
 `;
 
@@ -390,6 +398,7 @@ export function Chat() {
     <>
       <OverflowProbe />
       {!!showSessionTabs && !isInEdit && <TabBar ref={tabsRef} />}
+      <ChatHeader />
       {widget}
 
       <StepsDiv
@@ -419,7 +428,7 @@ export function Chat() {
             </div>
           ))}
       </StepsDiv>
-      <div className={"relative shrink-0"}>
+      <div className={"relative mx-auto w-full max-w-3xl shrink-0"}>
         <ToolConfigNotice />
         <ErrorBoundary
           fallbackRender={({ error }) => (

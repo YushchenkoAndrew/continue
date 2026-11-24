@@ -6,7 +6,6 @@ import {
   SlashCommandSource,
 } from "core";
 import { memo, useMemo } from "react";
-import { defaultBorderRadius, vscBackground } from "..";
 import { useAppSelector } from "../../redux/hooks";
 import { selectSlashCommandComboBoxInputs } from "../../redux/selectors";
 import { ContextItemsPeek } from "./belowMainInput/ContextItemsPeek";
@@ -119,9 +118,9 @@ function ContinueInputBox(props: ContinueInputBoxProps) {
           borderColor={
             isStreaming && (props.isLastUserInput || isInEdit)
               ? undefined
-              : vscBackground
+              : "transparent"
           }
-          borderRadius={defaultBorderRadius}
+          borderRadius="var(--chat-radius, 0.75rem)"
         >
           <TipTapEditor
             editorState={props.editorState}

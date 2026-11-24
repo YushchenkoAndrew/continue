@@ -28,6 +28,7 @@ module.exports = {
       },
       borderRadius: {
         default: "0.5rem",
+        chat: "var(--chat-radius)",
       },
       fontSize: {
         "2xs": "0.6875rem", // 11px
@@ -36,6 +37,10 @@ module.exports = {
         0.5: "0.5px",
       },
       colors: {
+        chat: {
+          border: "var(--chat-border)",
+          fill: "var(--chat-fill)",
+        },
         background: varWithFallback("background"),
         foreground: varWithFallback("foreground"),
         editor: {

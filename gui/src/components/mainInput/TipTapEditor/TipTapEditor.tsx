@@ -211,11 +211,16 @@ function TipTapEditorInner(props: TipTapEditorProps) {
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
-      className={
+      className={`${
         !props.isMainInput && shouldHideToolbar
           ? "cursor-pointer"
           : "cursor-text"
-      }
+      } ${
+        // Sent messages are a soft block rather than a second composer.
+        props.isMainInput
+          ? ""
+          : "!bg-chat-fill focus-within:!border-command-border-focus !border-transparent"
+      }`}
       onClick={() => {
         editor?.commands.focus();
       }}

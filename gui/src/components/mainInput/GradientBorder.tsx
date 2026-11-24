@@ -1,11 +1,14 @@
 import styled, { keyframes } from "styled-components";
+import { varWithFallback } from "../../styles/theme";
 
-const gradient = keyframes`
-  0% {
-    background-position: 0px 0;
+// While the model is working the frame breathes between the neutral border and the theme's
+// focus colour, instead of cycling through a rainbow gradient.
+const pulse = keyframes`
+  0%, 100% {
+    background-color: var(--chat-border);
   }
-  100% {
-    background-position: 100em 0;
+  50% {
+    background-color: ${varWithFallback("border-focus")};
   }
 `;
 
@@ -17,24 +20,16 @@ export const GradientBorder = styled.div<{
   border-radius: ${(props) => props.borderRadius || "0"};
   padding: 1px;
   box-sizing: border-box; /* width: 100% must include the 1px border padding */
-  background: ${(props) =>
-    props.borderColor
-      ? props.borderColor
-      : `repeating-linear-gradient(
-      101.79deg,
-      #1BBE84 0%,
-      #331BBE 16%,
-      #BE1B55 33%,
-      #A6BE1B 55%,
-      #BE1B55 67%,
-      #331BBE 85%,
-      #1BBE84 99%
-    )`};
-  animation: ${(props) => (props.loading ? gradient : "")} 6s linear infinite;
-  background-size: 200% 200%;
+  background-color: ${(props) => props.borderColor || "var(--chat-border)"};
+  animation: ${(props) => (props.loading ? pulse : "none")} 2.4s ease-in-out
+    infinite;
   width: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
   margin-top: ${(props) => (props.loading ? "8px" : "")};
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;

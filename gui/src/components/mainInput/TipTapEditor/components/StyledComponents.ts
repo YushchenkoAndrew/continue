@@ -13,14 +13,14 @@ import { getFontSize } from "../../../../util";
 export const InputBoxDiv = styled.div<{}>`
   resize: none;
   font-family: inherit;
-  border-radius: 0.5rem;
+  border-radius: var(--chat-radius, 0.75rem);
   padding-bottom: 1px;
   margin: 0;
   height: auto;
   background-color: ${vscInputBackground};
   color: ${vscForeground};
 
-  border: 1px solid ${vscCommandCenterInactiveBorder};
+  border: 1px solid var(--chat-border, ${vscCommandCenterInactiveBorder});
   transition: border-color 0.15s ease-in-out;
   &:focus-within {
     border: 1px solid ${vscCommandCenterActiveBorder};

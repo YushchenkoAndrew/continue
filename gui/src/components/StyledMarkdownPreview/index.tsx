@@ -37,6 +37,17 @@ const StyledMarkdown = styled.div<{
   whiteSpace: string;
   bgColor: string;
 }>`
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 1.25em 0 0.5em;
+  }
+
   h1 {
     font-size: 1.25em;
   }
@@ -71,7 +82,8 @@ const StyledMarkdown = styled.div<{
     overflow-x: auto;
     overflow-y: hidden;
 
-    padding: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--chat-border);
   }
 
   table {
@@ -79,6 +91,32 @@ const StyledMarkdown = styled.div<{
     width: max-content;
     max-width: 100%;
     overflow-x: auto;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    border: 1px solid var(--chat-border);
+    padding: 4px 10px;
+    text-align: left;
+  }
+
+  th {
+    font-weight: 600;
+    background-color: var(--chat-fill);
+  }
+
+  blockquote {
+    margin: 0.75em 0;
+    padding: 0 0 0 12px;
+    border-left: 3px solid var(--chat-border);
+    color: var(--vscode-descriptionForeground, ${vscForeground});
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--chat-border);
+    margin: 1.25em 0;
   }
 
   img {
@@ -101,11 +139,11 @@ const StyledMarkdown = styled.div<{
   ol ul,
   ol ol {
     padding-left: 1.5em;
-    margin-top: 1em;
+    margin-top: 0.35em;
   }
 
   li {
-    margin-bottom: 0.8em;
+    margin-bottom: 0.35em;
   }
   li:last-child {
     margin-bottom: 0;
@@ -118,6 +156,13 @@ const StyledMarkdown = styled.div<{
 
   code:not(pre > code) {
     font-family: var(--vscode-editor-font-family);
+    background-color: var(--chat-fill);
+    padding: 0.1em 0.35em;
+    font-size: 0.9em;
+  }
+
+  p {
+    margin: 0 0 0.75em;
   }
 
   background-color: ${(props) => props.bgColor};
@@ -145,7 +190,7 @@ const StyledMarkdown = styled.div<{
   li,
   ol,
   ul {
-    line-height: 1.5;
+    line-height: 1.6;
   }
 
   * {

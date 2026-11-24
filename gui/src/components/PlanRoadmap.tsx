@@ -19,7 +19,7 @@ const GLYPH: Record<StepState, string> = {
   failed: "✗",
 };
 const GLYPH_COLOR: Record<StepState, string> = {
-  done: "var(--vscode-charts-green, #3fb950)",
+  done: "var(--vscode-descriptionForeground)",
   active: "var(--vscode-progressBar-background, #0e70c0)",
   pending: "var(--vscode-descriptionForeground)",
   blocked: "var(--vscode-list-warningForeground, #cca700)",
@@ -47,15 +47,11 @@ function ProgressBar({ run }: { run: AgentRun }) {
     : run.steps.some((s) => s.state === "blocked")
       ? GLYPH_COLOR.blocked
       : run.status === "completed"
-        ? GLYPH_COLOR.done
+        ? "var(--vscode-charts-green, #3fb950)"
         : GLYPH_COLOR.active;
   return (
     <div
-      className="h-1 w-full overflow-hidden rounded"
-      style={{
-        backgroundColor:
-          "var(--vscode-editorWidget-border, rgba(128,128,128,0.3))",
-      }}
+      className="bg-chat-border h-0.5 w-full overflow-hidden rounded-full"
       role="progressbar"
       aria-valuenow={pct}
       aria-valuemin={0}
@@ -106,8 +102,7 @@ export function PlanRoadmap() {
   if (compact) {
     return (
       <div
-        className="border-border text-description mx-2 mb-1 min-w-0 truncate rounded border border-solid px-2 py-1 text-xs"
-        style={{ backgroundColor: "var(--vscode-editor-background)" }}
+        className="border-chat-border text-description rounded-chat mx-2 mb-1.5 min-w-0 truncate border border-solid px-3 py-1 text-xs"
         data-testid="plan-roadmap"
         title={activity}
       >
@@ -119,12 +114,11 @@ export function PlanRoadmap() {
 
   return (
     <div
-      className="border-border mx-2 mb-1 min-w-0 rounded border border-solid text-xs"
-      style={{ backgroundColor: "var(--vscode-editor-background)" }}
+      className="border-chat-border rounded-chat mx-2 mb-1.5 min-w-0 border border-solid text-xs"
       data-testid="plan-roadmap"
     >
       <button
-        className="text-foreground flex w-full min-w-0 cursor-pointer items-center gap-1.5 border-none bg-transparent px-2 py-1 text-left"
+        className="text-foreground flex w-full min-w-0 cursor-pointer items-center gap-1.5 border-none bg-transparent px-3 py-1.5 text-left"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
@@ -133,21 +127,21 @@ export function PlanRoadmap() {
         ) : (
           <ChevronRightIcon className="h-3 w-3 flex-shrink-0" />
         )}
-        <span className="min-w-0 truncate font-semibold" title={header}>
+        <span className="min-w-0 truncate font-medium" title={header}>
           {header}
         </span>
-        <span className="text-description ml-auto flex-shrink-0 font-semibold">
+        <span className="text-description ml-auto flex-shrink-0 tabular-nums">
           {run.done} / {run.total}
         </span>
       </button>
 
-      <div className="px-2 pb-1">
+      <div className="px-3 pb-1.5">
         <ProgressBar run={run} />
       </div>
 
       {!open && active && (
         <div
-          className="text-description truncate px-2 pb-1"
+          className="text-description truncate px-3 pb-1.5"
           title={active.label}
         >
           {active.state === "failed" ? "Failed: " : "Now: "}
@@ -156,11 +150,11 @@ export function PlanRoadmap() {
       )}
 
       {open && (
-        <div className="max-h-44 overflow-y-auto px-2 pb-1">
+        <div className="max-h-44 overflow-y-auto px-3 pb-1.5">
           {run.steps.map((s, i) => (
             <div
               key={i}
-              className={`flex min-w-0 gap-1.5 py-0.5 ${s.state === "active" ? "font-semibold" : ""} ${s.state === "done" ? "opacity-70" : ""}`}
+              className={`flex min-w-0 gap-1.5 py-0.5 ${s.state === "active" ? "font-medium" : ""} ${s.state === "done" ? "opacity-60" : ""}`}
             >
               <span
                 className="w-3 flex-shrink-0 text-center"

@@ -44,7 +44,7 @@ export default function ResponseActions({
   const compactConversation = useCompactConversation();
 
   return (
-    <div className="text-description-muted mx-2 flex cursor-default items-center justify-end space-x-1 bg-transparent pb-0 text-xs">
+    <div className="text-description-muted mx-3 flex cursor-default items-center justify-start space-x-1 bg-transparent pb-0 text-xs opacity-50 transition-opacity duration-200 focus-within:opacity-100 hover:opacity-100">
       <HeaderButtonWithToolTip
         testId={`compact-button-${index}`}
         text={
