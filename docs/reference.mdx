@@ -114,7 +114,13 @@ The `models` section defines the language models used in your configuration. Mod
 
 - `requestOptions`: HTTP request options specific to the model.
 
-  - `timeout`: Timeout for each request to the language model.
+  - `timeout`: Maximum time in seconds for each request to the language model, from start to end of the response.
+
+  - `connectTimeout`: Seconds allowed to open the connection. Not limited by default.
+
+  - `firstTokenTimeout`: Seconds to wait for the server to start responding, for example while a local model loads. Defaults to 600 for localhost and private-network servers and is unlimited for remote hosts. `0` disables it.
+
+  - `idleTimeout`: Seconds allowed without data in the middle of a streamed response. Defaults to 300 for localhost and private-network servers and is unlimited for remote hosts. `0` disables it.
 
   - `verifySsl`: Whether to verify SSL certificates for requests.
 

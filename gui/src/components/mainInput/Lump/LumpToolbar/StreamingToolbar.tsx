@@ -1,5 +1,50 @@
+import { useEffect, useState } from "react";
+import { useAppSelector } from "../../../../redux/hooks";
 import { getAltKeyLabel, getMetaKeyLabel, isJetBrains } from "../../../../util";
 import { GeneratingIndicator } from "./GeneratingIndicator";
+
+// Seconds the current request has produced nothing, or undefined once output has started.
+// Purely local: it only looks at the chat state, so waiting for a local model that is still
+// loading costs no extra requests.
+function useSecondsWaitingForModel(): number | undefined {
+  const waiting = useAppSelector((state) => {
+    if (!state.session.isStreaming) {
+      return false;
+    }
+    const last = state.session.history.at(-1);
+    if (!last || last.isGatheringContext || last.reasoning) {
+      return false;
+    }
+    const message = last.message;
+    if (message.role !== "assistant") {
+      return false;
+    }
+    const hasText = Array.isArray(message.content)
+      ? message.content.length > 0
+      : !!message.content;
+    return (
+      !hasText && !message.toolCalls?.length && !last.toolCallStates?.length
+    );
+  });
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!waiting) {
+      setSeconds(0);
+      return;
+    }
+    const start = Date.now();
+    const id = setInterval(
+      () => setSeconds(Math.floor((Date.now() - start) / 1000)),
+      1000,
+    );
+    return () => clearInterval(id);
+  }, [waiting]);
+
+  return waiting ? seconds : undefined;
+}
+
+const SHOW_WAITING_AFTER_SECONDS = 4;
 
 interface StreamingToolbarProps {
   onStop: () => void;
@@ -11,10 +56,15 @@ export function StreamingToolbar({
   displayText = "Stop",
 }: StreamingToolbarProps) {
   const jetbrains = isJetBrains();
+  const waited = useSecondsWaitingForModel();
+  const text =
+    waited !== undefined && waited >= SHOW_WAITING_AFTER_SECONDS
+      ? `Waiting for the model to respond (${waited}s)`
+      : "Generating";
 
   return (
-    <div className="flex w-full items-center justify-between">
-      <GeneratingIndicator />
+    <div className="flex w-full min-w-0 items-center justify-between gap-2">
+      <GeneratingIndicator text={text} />
       <div
         onClick={onStop}
         className="text-2xs cursor-pointer px-1.5 py-0.5 hover:brightness-125"

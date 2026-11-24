@@ -30,6 +30,9 @@ export type ClientCertificateOptions = z.infer<
 
 export const requestOptionsSchema = z.object({
   timeout: z.number().optional(),
+  connectTimeout: z.number().optional(),
+  firstTokenTimeout: z.number().optional(),
+  idleTimeout: z.number().optional(),
   verifySsl: z.boolean().optional(),
   caBundlePath: z.union([z.string(), z.array(z.string())]).optional(),
   proxy: z.string().optional(),
@@ -91,6 +94,9 @@ export const modelDescriptionSchema = z.object({
   requestOptions: z
     .object({
       timeout: z.number().optional(),
+      connectTimeout: z.number().optional(),
+      firstTokenTimeout: z.number().optional(),
+      idleTimeout: z.number().optional(),
       verifySsl: z.boolean().optional(),
       caBundlePath: z.union([z.string(), z.array(z.string())]).optional(),
       proxy: z.string().optional(),

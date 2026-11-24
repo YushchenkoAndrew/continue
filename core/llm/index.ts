@@ -38,6 +38,7 @@ import mergeJson from "../util/merge.js";
 import { renderChatMessage } from "../util/messageContent.js";
 import { isOllamaInstalled } from "../util/ollamaHelper.js";
 import { withExponentialBackoff } from "../util/withExponentialBackoff.js";
+import { describeTimeLimitError } from "./utils/timeLimit.js";
 
 import {
   autodetectPromptTemplates,
@@ -661,7 +662,8 @@ export abstract class BaseLLM implements ILLM {
         interaction,
         undefined,
       );
-    } catch (e) {
+    } catch (rawError) {
+      const e = describeTimeLimitError(rawError);
       Logger.error(e as Error, {
         context: "llm_stream_fim",
         model: completionOptions.model,
@@ -791,7 +793,8 @@ export abstract class BaseLLM implements ILLM {
         interaction,
         undefined,
       );
-    } catch (e) {
+    } catch (rawError) {
+      const e = describeTimeLimitError(rawError);
       Logger.error(e as Error, {
         context: "llm_stream_complete",
         model: completionOptions.model,
@@ -899,7 +902,8 @@ export abstract class BaseLLM implements ILLM {
         interaction,
         undefined,
       );
-    } catch (e) {
+    } catch (rawError) {
+      const e = describeTimeLimitError(rawError);
       Logger.error(e as Error, {
         context: "llm_complete",
         model: completionOptions.model,
@@ -1284,7 +1288,8 @@ export abstract class BaseLLM implements ILLM {
         interaction,
         usage,
       );
-    } catch (e) {
+    } catch (rawError) {
+      const e = describeTimeLimitError(rawError);
       Logger.error(e as Error, {
         context: "llm_stream_chat",
         model: completionOptions.model,

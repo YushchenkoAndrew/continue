@@ -847,6 +847,9 @@ declare global {
   
   export interface RequestOptions {
     timeout?: number;
+    connectTimeout?: number;
+    firstTokenTimeout?: number;
+    idleTimeout?: number;
     verifySsl?: boolean;
     caBundlePath?: string | string[];
     proxy?: string;

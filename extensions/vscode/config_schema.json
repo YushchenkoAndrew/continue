@@ -120,6 +120,21 @@
           "default": 7200,
           "type": "integer"
         },
+        "connectTimeout": {
+          "title": "Connect Timeout",
+          "description": "Seconds allowed to open the connection to the model server. Not limited by default.",
+          "type": "number"
+        },
+        "firstTokenTimeout": {
+          "title": "First Token Timeout",
+          "description": "Seconds to wait for the server to start responding (a local model loading and processing the prompt). Defaults to 600 for localhost and private-network servers and is unlimited for remote hosts. 0 disables it.",
+          "type": "number"
+        },
+        "idleTimeout": {
+          "title": "Idle Timeout",
+          "description": "Seconds allowed between chunks of a streamed response. Defaults to 300 for localhost and private-network servers and is unlimited for remote hosts. 0 disables it.",
+          "type": "number"
+        },
         "verifySsl": {
           "title": "Verify Ssl",
           "description": "Whether to verify SSL certificates for requests.",

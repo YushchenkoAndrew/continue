@@ -30,10 +30,16 @@ const LayoutTopDiv = styled(CustomScrollbarDiv)`
   overflow-x: hidden;
 `;
 
+// Both grids need an explicit column track. Without `grid-template-columns` the implicit
+// column is `auto`, which grows to the widest unbreakable child (a long URL, a code line,
+// a table) and pushes the whole webview wider than the sidebar. `minmax(0, 1fr)` pins the
+// track to the available width so wide content has to wrap or scroll inside its own box.
 const GridDiv = styled.div`
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 1fr auto;
   height: 100vh;
+  min-width: 0;
   overflow-x: visible;
 `;
 
@@ -204,6 +210,7 @@ const Layout = () => {
               scrollbarGutter: "stable both-edges",
               minHeight: "100%",
               display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr)",
               gridTemplateRows: "1fr auto",
             }}
           >

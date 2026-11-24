@@ -1,4 +1,8 @@
-import { streamSse } from "@continuedev/fetch";
+import {
+  isLocalHost,
+  resolveRequestTimeLimits,
+  streamSse,
+} from "@continuedev/fetch";
 import { OpenAI } from "openai/index";
 import {
   ChatCompletion,
@@ -39,14 +43,54 @@ export class OpenAIApi implements BaseLlmApi {
   constructor(protected config: z.infer<typeof OpenAIConfigSchema>) {
     this.apiBase = config.apiBase ?? this.apiBase;
 
+    const { timeout, maxRetries } = OpenAIApi.clientLimits(
+      this.apiBase,
+      config.requestOptions,
+    );
+
     // Always create the original OpenAI client for fallback
     this.openai = new OpenAI({
       // Necessary because `new OpenAI()` will throw an error if there is no API Key
       apiKey: config.apiKey ?? "",
       baseURL: this.apiBase,
       fetch: customFetch(config.requestOptions),
-      timeout: config?.requestOptions?.timeout || undefined,
+      timeout,
+      maxRetries,
     });
+  }
+
+  /**
+   * The client's own limits. `timeout` is in milliseconds and only covers the wait for the
+   * response headers (the client drops it once they arrive); `requestOptions.timeout` is in
+   * seconds, and passing it through unconverted turned `timeout: 1800` into 1.8 s, which
+   * cancelled requests to a local model that was still loading. The per-phase limits are
+   * enforced by the fetch layer with clearer errors, so the client's timer is only a backstop
+   * set just above them.
+   *
+   * The client also re-sends a request when the connection fails, which for a local
+   * single-slot server means a duplicate generation, so retries are off for local hosts.
+   */
+  private static clientLimits(
+    apiBase: string,
+    requestOptions: z.infer<typeof OpenAIConfigSchema>["requestOptions"],
+  ): { timeout?: number; maxRetries?: number } {
+    try {
+      const url = new URL(apiBase);
+      const limits = resolveRequestTimeLimits(url, requestOptions);
+      const waits = [limits.totalMs, limits.firstTokenMs].filter(
+        (ms): ms is number => !!ms,
+      );
+      return {
+        timeout: waits.length ? Math.max(...waits) + 5000 : undefined,
+        maxRetries: isLocalHost(url.hostname) ? 0 : undefined,
+      };
+    } catch {
+      return {
+        timeout: requestOptions?.timeout
+          ? requestOptions.timeout * 1000
+          : undefined,
+      };
+    }
   }
   modifyChatBody<T extends ChatCompletionCreateParams>(body: T): T {
     // Add stream_options to include usage in streaming responses
@@ -97,8 +141,7 @@ export class OpenAIApi implements BaseLlmApi {
 
   modifyCompletionBody<
     T extends
-      | CompletionCreateParamsNonStreaming
-      | CompletionCreateParamsStreaming,
+      CompletionCreateParamsNonStreaming | CompletionCreateParamsStreaming,
   >(body: T): T {
     return body;
   }

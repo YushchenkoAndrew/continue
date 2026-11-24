@@ -94,7 +94,13 @@ export default async function fetch(url, options_) {
     let response = null;
 
     const abort = () => {
-      const error = new AbortError("The operation was aborted.");
+      // A request-limit abort carries its reason (see timeouts.ts) so callers can tell it
+      // apart from a user cancel; every other abort stays a plain AbortError.
+      const reason = signal && signal.reason;
+      const error =
+        reason && reason.name === "RequestTimeLimitError"
+          ? reason
+          : new AbortError("The operation was aborted.");
       reject(error);
       if (request.body && request.body instanceof Stream.Readable) {
         request.body.destroy(error);

@@ -39,9 +39,12 @@ export const ArgsItems = ({ args, isShowing }: ArgsItemsProps) => {
   return (
     <div className="ml-5 mr-2 mt-1 flex flex-col text-xs">
       {args.map(([key, value]) => (
-        <div key={key} className="flex flex-row items-center gap-2 py-0.5">
-          <span className="text-lightgray">{key}:</span>
-          <code className="break-all">{JSON.stringify(value)}</code>
+        <div
+          key={key}
+          className="flex min-w-0 flex-row items-center gap-2 py-0.5"
+        >
+          <span className="text-lightgray flex-shrink-0">{key}:</span>
+          <code className="min-w-0 break-all">{JSON.stringify(value)}</code>
         </div>
       ))}
     </div>

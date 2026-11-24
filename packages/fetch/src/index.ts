@@ -8,9 +8,19 @@ import {
 import patchedFetch from "./node-fetch-patch.js";
 
 import { fetchwithRequestOptions } from "./fetch.js";
+import {
+  isLocalHost,
+  isRequestTimeLimitError,
+  RequestTimeLimitError,
+  resolveRequestTimeLimits,
+} from "./timeouts.js";
 
 export {
   fetchwithRequestOptions,
+  isLocalHost,
+  isRequestTimeLimitError,
+  RequestTimeLimitError,
+  resolveRequestTimeLimits,
   patchedFetch,
   streamJSON,
   streamResponse,

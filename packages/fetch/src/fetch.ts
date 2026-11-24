@@ -5,6 +5,7 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 import { BodyInit, RequestInit, Response } from "node-fetch";
 import { getAgentOptions } from "./getAgentOptions.js";
 import patchedFetch from "./node-fetch-patch.js";
+import { createTimeLimitGuard, resolveRequestTimeLimits } from "./timeouts.js";
 import { getProxy, shouldBypassProxy } from "./util.js";
 
 const { http, https } = (followRedirects as any).default;
@@ -158,6 +159,21 @@ export async function fetchwithRequestOptions(
   const finalBody = updatedBody ?? init?.body;
   const method = init?.method || "GET";
 
+  // Per-phase limits (connect / first byte / idle / total). Absent for remote hosts unless
+  // configured, in which case the request is passed through untouched.
+  const guard = createTimeLimitGuard(
+    resolveRequestTimeLimits(url, requestOptions),
+    url.host,
+    init?.signal as AbortSignal | undefined,
+  );
+  if (guard) {
+    if (proxy && !shouldBypass) {
+      guard.waitForHeaders();
+    } else {
+      guard.watchAgent(agent);
+    }
+  }
+
   // Verbose logging for debugging - log request details
   if (process.env.VERBOSE_FETCH) {
     logRequest(method, url, headers, finalBody, proxy, shouldBypass);
@@ -170,7 +186,17 @@ export async function fetchwithRequestOptions(
       body: finalBody,
       headers: headers,
       agent: agent,
+      ...(guard ? { signal: guard.signal as any } : {}),
     });
+
+    if (guard) {
+      guard.responseStarted();
+      // End/close/error listeners do not switch the body stream into flowing mode.
+      const body = resp.body as any;
+      body?.once?.("end", guard.finish);
+      body?.once?.("close", guard.finish);
+      body?.once?.("error", guard.finish);
+    }
 
     // Verbose logging for debugging - log response details
     if (process.env.VERBOSE_FETCH) {
@@ -186,6 +212,8 @@ export async function fetchwithRequestOptions(
 
     return resp;
   } catch (error) {
+    guard?.finish();
+
     // Verbose logging for errors
     if (process.env.VERBOSE_FETCH) {
       logError(error);

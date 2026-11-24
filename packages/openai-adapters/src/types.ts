@@ -8,6 +8,9 @@ export const ClientCertificateOptionsSchema = z.object({
 
 export const RequestOptionsSchema = z.object({
   timeout: z.number().optional(),
+  connectTimeout: z.number().optional(),
+  firstTokenTimeout: z.number().optional(),
+  idleTimeout: z.number().optional(),
   verifySsl: z.boolean().optional(),
   caBundlePath: z.union([z.string(), z.array(z.string())]).optional(),
   proxy: z.string().optional(),
@@ -145,9 +148,7 @@ export interface AskSageTool {
 }
 
 export type AskSageToolChoice =
-  | "auto"
-  | "none"
-  | { type: "function"; function: { name: string } };
+  "auto" | "none" | { type: "function"; function: { name: string } };
 
 export interface AskSageToolCall {
   id: string;

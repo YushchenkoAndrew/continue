@@ -66,11 +66,23 @@ const StyledMarkdown = styled.div<{
     background-color: ${vscEditorBackground};
     border-radius: ${defaultBorderRadius};
 
-    max-width: calc(100vw - 24px);
-    overflow-x: scroll;
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: auto;
     overflow-y: hidden;
 
     padding: 8px;
+  }
+
+  table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  img {
+    max-width: 100%;
   }
 
   code {
@@ -126,6 +138,8 @@ const StyledMarkdown = styled.div<{
   padding-left: 8px;
   padding-right: 8px;
   color: ${vscForeground};
+  min-width: 0;
+  max-width: 100%;
 
   p,
   li,

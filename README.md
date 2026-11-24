@@ -1,6 +1,6 @@
 # Continue — Local Agent Edition
 
-A fork of [Continue](https://github.com/continuedev/continue) for people who run the agent on a **small local model with a small context window** (for example Gemma 4 26B-A4B on llama.cpp at 32K). Autocomplete is unchanged. The agent tooling is rewritten so that it works inside that budget.
+A fork of [Continue](https://github.com/continuedev/continue) for people who run the agent on a **small local model with a small context window** (for example Gemma 4 26B-A4B on llama.cpp at 32-64K). Autocomplete is unchanged. The agent tooling is rewritten so that it works inside that budget.
 
 The upstream project is read-only and no longer maintained; this fork keeps it usable. License: Apache-2.0.
 
@@ -95,6 +95,21 @@ The prompt format (FIM) and the number of tokens are unchanged; what changed is 
 
 The Next Edit AST tracker no longer holds a parse tree per file revision forever (trees are freed and history is capped at 4), file paths are normalised so a document is found whichever form of its URI is used, and Next Edit work (chain reset, cursor-move handling, editor-change handling) is skipped entirely when Next Edit is not enabled.
 
+## Slow-loading local models
+
+A large local model can take a minute or more to load on the first request. llama.cpp keeps the HTTP request open while it loads, so the client has to wait instead of treating the silence as a failure.
+
+- **Cause fixed:** `requestOptions.timeout` is in seconds, but it was handed to the OpenAI client, which expects milliseconds. `timeout: 1800` therefore became 1.8 s, the client cancelled the request, then re-sent it twice more; on the server this appears as repeated `request cancelled while waiting for model` lines.
+- **Separate limits** (all in seconds, all optional, `0` disables one):
+  - `connectTimeout`: opening the connection. Not limited by default.
+  - `firstTokenTimeout`: the server accepted the request but has not produced any output yet (model loading, prompt processing; the headers alone do not end the wait). Default **600** for localhost, private-network and bare host names; unlimited for remote hosts.
+  - `idleTimeout`: no data for this long in the middle of a response. Default **300** for the same local hosts; unlimited for remote hosts.
+  - `timeout`: the whole request, start to end. Not limited unless set.
+- Remote providers keep their previous behaviour unless you set these explicitly.
+- Local requests are never re-sent automatically: the OpenAI client's connection retries are off for local hosts so a slow request can't turn into a duplicate generation. Cancelling still works at every stage.
+- While a response has produced nothing for 4 seconds the chat shows `Waiting for the model to respond (Ns)`. This is derived from the chat state; nothing polls the server.
+- When a limit is hit the error names the limit and the setting to raise.
+
 ## Setup
 
 ```bash
@@ -108,7 +123,7 @@ Copy `config.yaml.example` to `~/.continue/config.yaml`. Notes:
 
 - `contextLength` on the model must match your server's `--ctx-size`; the read budget and compaction thresholds derive from it.
 - `capabilities: [tool_use]` is required for custom OpenAI-compatible endpoints.
-- `requestOptions.timeout` is in **seconds**.
+- `requestOptions.timeout` is in **seconds** and limits the whole request. For slow local models see "Slow-loading local models" above; the defaults already allow a 10 minute model load.
 - Recommended llama.cpp flags (names vary by build): `--jinja`, `--reasoning-format deepseek`, `--reasoning-budget <N>`.
 - To restore the legacy whole-file edit tools, enable experimental tools in Continue's settings.
 - Nothing new is required in config; existing Continue configs keep working. No new services, background processes or settings were added.
