@@ -1,5 +1,4 @@
 import { IDE } from "../..";
-import { throwIfFileIsSecurityConcern } from "../../indexing/ignore";
 import { resolveRelativePathInDir } from "../../util/ideUtils";
 import { joinPathsToUri } from "../../util/uri";
 import {
@@ -30,9 +29,16 @@ function assertSafeRelative(path: string) {
   }
 }
 
+/**
+ * `checkPath` rejects paths the agent must not touch (secrets etc.). It is injected
+ * because the security rules live in a Node-only module that the GUI bundle can't import.
+ * The core-side preprocessing step passes it, and a failure there stops the tool call
+ * before it is shown for approval.
+ */
 export async function planPatchFromIde(
   patchText: string,
   ide: IDE,
+  checkPath?: (path: string) => void,
 ): Promise<PlannedFile[]> {
   const patches: FilePatch[] = parsePatch(patchText);
   const seen = new Set<string>();
@@ -42,7 +48,7 @@ export async function planPatchFromIde(
   for (const fp of patches) {
     try {
       assertSafeRelative(fp.path);
-      throwIfFileIsSecurityConcern(fp.path);
+      checkPath?.(fp.path);
       if (seen.has(fp.path)) {
         throw new PatchError(
           `${fp.path} appears twice; put all its hunks under one "Update File".`,

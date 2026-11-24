@@ -1,4 +1,5 @@
 import { Tool } from "../..";
+import { throwIfFileIsSecurityConcern } from "../../indexing/ignore";
 import { planPatchFromIde } from "../../edit/applyPatch/planFromIde";
 import { BUILT_IN_GROUP_NAME, BuiltInToolNames } from "../builtIn";
 
@@ -34,7 +35,11 @@ export const applyPatchTool: Tool = {
   },
   defaultToolPolicy: "allowedWithPermission",
   preprocessArgs: async (args, extras) => {
-    const files = await planPatchFromIde(String(args.patch ?? ""), extras.ide);
+    const files = await planPatchFromIde(
+      String(args.patch ?? ""),
+      extras.ide,
+      throwIfFileIsSecurityConcern,
+    );
     return { ...args, summary: files.map((f) => f.label) };
   },
 };
