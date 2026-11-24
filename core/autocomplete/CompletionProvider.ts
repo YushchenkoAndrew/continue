@@ -11,7 +11,7 @@ import { BracketMatchingService } from "./filtering/BracketMatchingService.js";
 import { CompletionStreamer } from "./generation/CompletionStreamer.js";
 import { postprocessCompletion } from "./postprocessing/index.js";
 import { shouldPrefilter } from "./prefiltering/index.js";
-import { getAllSnippetsWithoutRace } from "./snippets/index.js";
+import { getAllSnippetsBudgeted } from "./snippets/index.js";
 import { renderPromptWithTokenLimit } from "./templating/index.js";
 import { GetLspDefinitionsFunction } from "./types.js";
 import { AutocompleteDebouncer } from "./util/AutocompleteDebouncer.js";
@@ -152,6 +152,7 @@ export class CompletionProvider {
     token: AbortSignal | undefined,
     force?: boolean,
   ): Promise<AutocompleteOutcome | undefined> {
+    let helper: HelperVars | undefined;
     try {
       // Create abort signal if not given
       if (!token) {
@@ -186,19 +187,20 @@ export class CompletionProvider {
         options.template = llm.promptTemplates.autocomplete as string;
       }
 
-      const helper = await HelperVars.create(
-        input,
-        options,
-        llm.model,
-        this.ide,
-      );
+      helper = await HelperVars.create(input, options, llm.model, this.ide);
+
+      if (token.aborted) {
+        return undefined;
+      }
 
       if (await shouldPrefilter(helper, this.ide)) {
         return undefined;
       }
 
+      const contextStart = Date.now();
+
       const [snippetPayload, workspaceDirs] = await Promise.all([
-        getAllSnippetsWithoutRace({
+        getAllSnippetsBudgeted({
           helper,
           ide: this.ide,
           getDefinitionsFromLsp: this.getDefinitionsFromLsp,
@@ -207,6 +209,11 @@ export class CompletionProvider {
         this.ide.getWorkspaceDirs(),
       ]);
 
+      // The user kept typing while context was being gathered: don't start inference.
+      if (token.aborted) {
+        return undefined;
+      }
+
       const { prompt, prefix, suffix, completionOptions } =
         renderPromptWithTokenLimit({
           snippetPayload,
@@ -214,6 +221,7 @@ export class CompletionProvider {
           helper,
           llm,
         });
+      const contextTime = Date.now() - contextStart;
 
       // Completion
       let completion: string | undefined = "";
@@ -268,6 +276,7 @@ export class CompletionProvider {
 
       const outcome: AutocompleteOutcome = {
         time: Date.now() - startTime,
+        contextTime,
         completion,
         prefix,
         suffix,
@@ -304,6 +313,7 @@ export class CompletionProvider {
     } catch (e: any) {
       this.onError(e);
     } finally {
+      helper?.dispose();
       this.loggingService.deleteAbortController(input.completionId);
     }
   }

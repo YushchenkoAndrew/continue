@@ -1,0 +1,22 @@
+--- core/tools/memory/memoryStore.ts	2026-11-24 17:22:00.070839533 +0200
++++ core/tools/memory/memoryStore.ts	2026-11-24 17:18:38.284766280 +0200
+@@ -4,7 +4,18 @@
+  */
+ 
+ export const PROJECT_SECTIONS = ["architecture", "conventions", "dependencies", "decisions", "limitations"] as const;
+-export const TASK_SECTIONS = ["objective", "done", "findings", "files", "decisions", "remaining"] as const;
++export const TASK_SECTIONS = [
++  "objective",
++  "approach",
++  "plan",
++  "criteria",
++  "risks",
++  "done",
++  "findings",
++  "files",
++  "decisions",
++  "remaining",
++] as const;
+ export type ProjectSection = (typeof PROJECT_SECTIONS)[number];
+ export type TaskSection = (typeof TASK_SECTIONS)[number];
+ 

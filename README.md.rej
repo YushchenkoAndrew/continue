@@ -1,0 +1,12 @@
+--- README.md	2026-11-24 17:22:00.091411488 +0200
++++ README.md	2026-11-24 17:21:05.225688604 +0200
+@@ -14,6 +14,9 @@
+ | New chat means the agent forgets everything | Per-project memory files, task state, and automatic **context compaction** that keeps the latest request verbatim. |
+ | Endless thinking / repeating the same step | Loop detection aborts the stream, retries once without reasoning, and refuses a third identical tool call. |
+ | Slow, shallow code navigation | VS Code language-server tools (definition, references, rename, call hierarchy, ...) and a cheap project graph. |
++| Autocomplete misses what is above the window; stalls on slow context sources | Cheap structural context for autocomplete (enclosing scope, imports, nearby declarations), per-source time budgets, no extra model calls. See [Autocomplete](#autocomplete). |
++| Large-file edits feel slow; `Document ... not found in AST tracker` errors | Diffs run only on the changed region, the editor is written only for the changed lines, and the AST tracker lifecycle is fixed. See [Edit performance](#edit-performance). |
++| Big tasks lose their thread; the agent guesses instead of asking | `update_plan` checklist with progress, `ask_user` questions in the chat, and `AI-TASK` markers for unfinished work. See [Planning and questions](#planning-and-questions). |
+ 
+ ## Tools
+ 

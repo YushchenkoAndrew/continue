@@ -9,6 +9,7 @@ import { generateLines } from "core/diff/util";
 import { ApplyAbortManager } from "core/edit/applyAbortManager";
 import { streamDiffLines } from "core/edit/streamDiffLines";
 import { pruneLinesFromBottom, pruneLinesFromTop } from "core/llm/countTokens";
+import { StageTimer } from "core/util/stageTimer";
 import { getMarkdownLanguageTagForFile } from "core/util";
 import { VerticalDiffManager } from "../diff/vertical/manager";
 import { VsCodeIde } from "../VsCodeIde";
@@ -32,9 +33,11 @@ export class ApplyManager {
     toolCallId,
     isSearchAndReplace,
   }: ApplyToFilePayload) {
+    const timer = new StageTimer("applyToFile");
     if (filepath) {
       await this.ensureFileOpen(filepath);
     }
+    timer.mark("open");
 
     const { activeTextEditor } = vscode.window;
     if (!activeTextEditor) {
@@ -45,15 +48,18 @@ export class ApplyManager {
     // Capture the original file content before applying changes
     const originalFileContent = activeTextEditor.document.getText();
 
+    // `fileContent` is not sent here: the final document text arrives with the "done" update, and
+    // re-sending the whole new file for large files costs a full serialization each way.
     await this.webviewProtocol.request("updateApplyState", {
       streamId,
       status: "streaming",
-      fileContent: text,
       originalFileContent,
       toolCallId,
     });
+    timer.mark("notify");
 
-    const hasExistingDocument = !!activeTextEditor.document.getText().trim();
+    // Same check as `.trim()` without copying the whole document again
+    const hasExistingDocument = /\S/.test(originalFileContent);
     if (hasExistingDocument) {
       // Currently `isSearchAndReplace` will always provide a full file rewrite
       // as the contents of `text`, so we can just instantly apply
@@ -80,6 +86,8 @@ export class ApplyManager {
         toolCallId,
       );
     }
+    timer.mark("apply");
+    timer.end(`${originalFileContent.length} chars`);
   }
 
   private async ensureFileOpen(filepath: string): Promise<void> {

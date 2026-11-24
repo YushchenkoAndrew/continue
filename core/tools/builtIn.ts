@@ -41,6 +41,8 @@ export enum BuiltInToolNames {
   UpdateProjectMemory = "update_project_memory",
   SaveTaskState = "save_task_state",
   GetTaskState = "get_task_state",
+  UpdatePlan = "update_plan",
+  AskUser = "ask_user",
 
   // excluded from allTools for now
   ViewRepoMap = "view_repo_map",
@@ -57,4 +59,5 @@ export const CLIENT_TOOLS_IMPLS = [
   BuiltInToolNames.InsertLines,
   BuiltInToolNames.ApplyPatch,
   BuiltInToolNames.RenameSymbol,
+  BuiltInToolNames.AskUser,
 ];

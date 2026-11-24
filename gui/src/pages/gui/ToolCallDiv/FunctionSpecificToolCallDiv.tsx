@@ -2,6 +2,8 @@ import { ToolCallState } from "core";
 import { BuiltInToolNames } from "core/tools/builtIn";
 import { EditOperation } from "core/tools/definitions/multiEdit";
 import { ApplyPatchDisplay } from "./ApplyPatchDisplay";
+import { AskUserQuestions } from "./AskUserQuestions";
+import { PlanChecklist } from "./PlanChecklist";
 import { CreateFile } from "./CreateFile";
 import { EditFile } from "./EditFile";
 import { FindAndReplaceDisplay } from "./FindAndReplace";
@@ -88,6 +90,10 @@ function FunctionSpecificToolCallDiv({
           patch={args?.patch}
         />
       );
+    case BuiltInToolNames.UpdatePlan:
+      return <PlanChecklist toolCallState={toolCallState} />;
+    case BuiltInToolNames.AskUser:
+      return <AskUserQuestions toolCallState={toolCallState} />;
     case BuiltInToolNames.RunTerminalCommand:
       return (
         <RunTerminalCommand

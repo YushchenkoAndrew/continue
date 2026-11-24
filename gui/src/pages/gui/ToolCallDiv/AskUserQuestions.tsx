@@ -1,0 +1,127 @@
+import { ToolCallState } from "core";
+import { normalizeQuestions } from "core/tools/askUser";
+import { useMemo, useState } from "react";
+import { Button } from "../../../components/ui/Button";
+import { useAppDispatch } from "../../../redux/hooks";
+import { answerAgentQuestion } from "../../../redux/thunks/answerAgentQuestion";
+
+interface Draft {
+  picked: number[];
+  custom: string;
+}
+
+/** In-chat question form for ask_user; once answered it shows the answers read-only. */
+export function AskUserQuestions({
+  toolCallState,
+}: {
+  toolCallState: ToolCallState;
+}) {
+  const dispatch = useAppDispatch();
+  const questions = useMemo(
+    () => normalizeQuestions(toolCallState.parsedArgs?.questions),
+    [toolCallState.parsedArgs],
+  );
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+
+  if (questions.length === 0) return null;
+
+  if (toolCallState.status !== "calling") {
+    const answered = toolCallState.output?.[0]?.content;
+    return (
+      <div className="text-description flex flex-col gap-1 whitespace-pre-wrap px-3 py-2 text-xs">
+        {answered ?? questions.map((q) => q.question).join("\n")}
+      </div>
+    );
+  }
+
+  const draftFor = (i: number): Draft =>
+    drafts[i] ?? { picked: [], custom: "" };
+  const update = (i: number, next: Draft) =>
+    setDrafts((prev) => {
+      const copy = questions.map(
+        (_, k) => prev[k] ?? { picked: [], custom: "" },
+      );
+      copy[i] = next;
+      return copy;
+    });
+
+  const answerFor = (i: number): string => {
+    const d = draftFor(i);
+    const chosen = d.picked.map((k) => questions[i].options[k]);
+    return [...chosen, d.custom.trim()].filter(Boolean).join("; ");
+  };
+  const ready = questions.every((_, i) => answerFor(i) !== "");
+
+  return (
+    <div className="flex flex-col gap-3 px-3 py-2 text-sm">
+      {questions.map((q, i) => {
+        const d = draftFor(i);
+        return (
+          <div key={i} className="flex flex-col gap-1">
+            <div className="font-semibold">{q.question}</div>
+            {q.options.map((opt, k) => {
+              const checked = d.picked.includes(k);
+              return (
+                <label
+                  key={k}
+                  className="flex cursor-pointer items-center gap-2 text-xs"
+                >
+                  <input
+                    type={q.multiple ? "checkbox" : "radio"}
+                    name={`${toolCallState.toolCallId}-${i}`}
+                    checked={checked}
+                    onChange={() =>
+                      update(i, {
+                        ...d,
+                        picked: q.multiple
+                          ? checked
+                            ? d.picked.filter((x) => x !== k)
+                            : [...d.picked, k]
+                          : [k],
+                        // choosing an option replaces a typed answer for single-choice questions
+                        custom: q.multiple ? d.custom : "",
+                      })
+                    }
+                  />
+                  {opt}
+                </label>
+              );
+            })}
+            <input
+              className="border-border bg-input text-input-foreground w-full rounded border px-2 py-1 text-xs"
+              placeholder={
+                q.options.length ? "Or type your own answer" : "Your answer"
+              }
+              value={d.custom}
+              onChange={(e) =>
+                update(i, {
+                  picked: q.multiple
+                    ? d.picked
+                    : e.target.value
+                      ? []
+                      : d.picked,
+                  custom: e.target.value,
+                })
+              }
+            />
+          </div>
+        );
+      })}
+      <div>
+        <Button
+          disabled={!ready}
+          onClick={() =>
+            void dispatch(
+              answerAgentQuestion({
+                toolCallId: toolCallState.toolCallId,
+                answers: questions.map((_, i) => answerFor(i)),
+              }),
+            )
+          }
+        >
+          Send answers
+        </Button>
+      </div>
+    </div>
+  );
+}

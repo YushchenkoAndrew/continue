@@ -28,6 +28,8 @@ export interface AutocompleteInput {
 export interface AutocompleteOutcome extends TabAutocompleteOptions {
   accepted?: boolean;
   time: number;
+  /** ms spent before inference started (parse + context gathering + prompt rendering) */
+  contextTime?: number;
   prefix: string;
   suffix: string;
   prompt: string;

@@ -27,22 +27,49 @@ export function convertMyersChangeToDiffLines(change: Change): DiffLine[] {
 // [ { type: "old", line: "foo" }, { type: "new", line: "foo" } ], we
 // pass ignoreNewlineAtEof: true.
 export function myersDiff(oldContent: string, newContent: string): DiffLine[] {
-  const theirFormat = diffLines(oldContent, newContent, {
-    ignoreNewlineAtEof: true,
-  });
-  let ourFormat = theirFormat.flatMap(convertMyersChangeToDiffLines);
+  // Agent edits touch a few lines of a possibly huge file. Lines shared at the start and end are
+  // emitted as "same" directly, so the O(ND) diff only runs on the region that actually changed.
+  const { prefixEnd, suffixLength } = commonLineBounds(oldContent, newContent);
+  const prefix = oldContent.slice(0, prefixEnd);
+  const suffix =
+    suffixLength > 0 ? oldContent.slice(oldContent.length - suffixLength) : "";
+  const oldMiddle = oldContent.slice(
+    prefixEnd,
+    oldContent.length - suffixLength,
+  );
+  const newMiddle = newContent.slice(
+    prefixEnd,
+    newContent.length - suffixLength,
+  );
 
-  // Combine consecutive old/new pairs that are identical after trimming
-  for (let i = 0; i < ourFormat.length - 1; i++) {
+  const middle =
+    oldMiddle === newMiddle
+      ? []
+      : diffLines(oldMiddle, newMiddle, {
+          ignoreNewlineAtEof: true,
+        }).flatMap(convertMyersChangeToDiffLines);
+
+  const sameLines = (text: string): DiffLine[] =>
+    text === "" ? [] : convertMyersChangeToDiffLines({ value: text } as Change);
+
+  // Combine consecutive old/new pairs that are identical after trimming (single pass)
+  const combined: DiffLine[] = [];
+  for (let i = 0; i < middle.length; i++) {
+    const cur = middle[i];
+    const next = middle[i + 1];
     if (
-      ourFormat[i]?.type === "old" &&
-      ourFormat[i + 1]?.type === "new" &&
-      ourFormat[i].line.trim() === ourFormat[i + 1].line.trim()
+      cur.type === "old" &&
+      next?.type === "new" &&
+      cur.line.trim() === next.line.trim()
     ) {
-      ourFormat[i] = { type: "same", line: ourFormat[i].line };
-      ourFormat.splice(i + 1, 1);
+      combined.push({ type: "same", line: cur.line });
+      i++;
+    } else {
+      combined.push(cur);
     }
   }
+
+  const ourFormat = [...sameLines(prefix), ...combined, ...sameLines(suffix)];
 
   // Remove trailing empty old lines
   while (
@@ -54,6 +81,42 @@ export function myersDiff(oldContent: string, newContent: string): DiffLine[] {
   }
 
   return ourFormat;
+}
+
+/**
+ * Longest common prefix / suffix of two texts, snapped to line boundaries: the prefix ends right
+ * after a "\n", the suffix starts right after one, and the two never overlap.
+ */
+function commonLineBounds(
+  a: string,
+  b: string,
+): { prefixEnd: number; suffixLength: number } {
+  const max = Math.min(a.length, b.length);
+  let p = 0;
+  while (p < max && a.charCodeAt(p) === b.charCodeAt(p)) {
+    p++;
+  }
+  // Snap back to just after the last newline inside the common region
+  const prefixEnd = p === 0 ? 0 : a.lastIndexOf("\n", p - 1) + 1;
+
+  let s = 0;
+  const maxSuffix = max - prefixEnd;
+  while (
+    s < maxSuffix &&
+    a.charCodeAt(a.length - 1 - s) === b.charCodeAt(b.length - 1 - s)
+  ) {
+    s++;
+  }
+  // The suffix must start at a line start in both texts. Shrink until that holds.
+  const startsLine = (text: string, index: number) =>
+    index === 0 || text.charCodeAt(index - 1) === 10;
+  while (
+    s > 0 &&
+    !(startsLine(a, a.length - s) && startsLine(b, b.length - s))
+  ) {
+    s--;
+  }
+  return { prefixEnd, suffixLength: s };
 }
 
 export function myersCharDiff(

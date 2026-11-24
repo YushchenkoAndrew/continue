@@ -219,27 +219,77 @@ export class NextEditProvider {
     return this.previousCompletions[0];
   }
 
+  // Snapshotting the document (read + full parse) is the expensive part of ending a chain.
+  // Callers fire this on every cursor move / visible-editor change, so it is gated,
+  // skipped when nothing changed, and never runs twice at once.
+  private snapshotInFlight: Promise<void> | null = null;
+  private snapshotQueued = false;
+
   public async deleteChain(): Promise<void> {
-    PrefetchQueue.getInstance().abort();
+    const hadChain =
+      this.currentEditChainId !== null || this.previousCompletions.length > 0;
 
     this.currentEditChainId = null;
     this.previousCompletions = [];
 
-    if (this.previousRequest) {
-      const fileContent = (
-        await this.ide.readFile(this.previousRequest.filepath)
-      ).toString();
-
-      const ast = await getAst(this.previousRequest.filepath, fileContent);
-
-      if (ast) {
-        DocumentHistoryTracker.getInstance().push(
-          localPathOrUriToPath(this.previousRequest.filepath),
-          fileContent,
-          ast,
-        );
-      }
+    // No chain means nothing was prefetched and nothing was edited through next-edit:
+    // there is no state to snapshot and no queue to abort.
+    if (!hadChain) {
+      return;
     }
+
+    PrefetchQueue.getInstance().abort();
+    await this.snapshotPreviousRequest();
+  }
+
+  private async snapshotPreviousRequest(): Promise<void> {
+    if (this.snapshotInFlight) {
+      // Coalesce: one more pass after the current one is enough, however many calls arrive.
+      this.snapshotQueued = true;
+      return this.snapshotInFlight;
+    }
+
+    this.snapshotInFlight = (async () => {
+      try {
+        do {
+          this.snapshotQueued = false;
+          const request = this.previousRequest;
+          if (!request) {
+            return;
+          }
+
+          const fileContent = (
+            await this.ide.readFile(request.filepath)
+          ).toString();
+          const tracker = DocumentHistoryTracker.getInstance();
+          const path = localPathOrUriToPath(request.filepath);
+
+          // Unchanged since the last snapshot: skip the parse entirely.
+          if (
+            tracker.hasDocument(path) &&
+            tracker.isLatestContent(path, fileContent)
+          ) {
+            continue;
+          }
+
+          const ast = await getAst(request.filepath, fileContent);
+          if (!ast) {
+            continue;
+          }
+          if (tracker.hasDocument(path)) {
+            tracker.push(path, fileContent, ast);
+          } else {
+            tracker.addDocument(path, fileContent, ast);
+          }
+        } while (this.snapshotQueued);
+      } catch (e) {
+        console.warn("Could not snapshot document for next edit:", e);
+      } finally {
+        this.snapshotInFlight = null;
+      }
+    })();
+
+    return this.snapshotInFlight;
   }
 
   public startChain(id?: string) {
@@ -417,10 +467,15 @@ export class NextEditProvider {
       diffContext: combinedDiffContext,
       autocompleteContext: this.autocompleteContext,
       historyDiff: createDiff({
-        beforeContent:
-          DocumentHistoryTracker.getInstance().getMostRecentDocumentHistory(
-            localPathOrUriToPath(helper.filepath),
-          ) ?? "",
+        // A document with no tracked history has nothing to diff against. Diffing the whole
+        // file against "" produced a huge, meaningless diff (and a console error).
+        beforeContent: DocumentHistoryTracker.getInstance().hasDocument(
+          localPathOrUriToPath(helper.filepath),
+        )
+          ? (DocumentHistoryTracker.getInstance().getMostRecentDocumentHistory(
+              localPathOrUriToPath(helper.filepath),
+            ) ?? helper.fileContents)
+          : helper.fileContents,
         afterContent: helper.fileContents,
         filePath: helper.filepath,
         diffType: DiffFormatType.Unified,

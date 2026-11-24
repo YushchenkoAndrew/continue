@@ -40,6 +40,8 @@ export const getBaseToolDefinitions = () => [
   toolDefinitions.updateProjectMemoryTool,
   toolDefinitions.saveTaskStateTool,
   toolDefinitions.getTaskStateTool,
+  toolDefinitions.updatePlanTool,
+  toolDefinitions.askUserTool,
   // misc
   toolDefinitions.runTerminalCommandTool,
   toolDefinitions.createRuleBlock,

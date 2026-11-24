@@ -209,6 +209,13 @@ export class SelectionChangeManager {
   public async handleSelectionChange(
     e: vscode.TextEditorSelectionChangeEvent,
   ): Promise<void> {
+    // Everything below (state capture, handlers, static jump analysis, chain cleanup) only
+    // serves Next Edit. When it is off, a cursor move must cost nothing: this runs on every
+    // selection change and competes with autocomplete for the extension host.
+    if (!NextEditWindowManager.isInstantiated()) {
+      return;
+    }
+
     const now = Date.now();
 
     // Simple debouncing logic.

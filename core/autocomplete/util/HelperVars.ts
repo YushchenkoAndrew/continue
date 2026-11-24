@@ -28,6 +28,9 @@ export class HelperVars {
   private _fullSuffix: string | undefined;
   private _prunedPrefix: string | undefined;
   private _prunedSuffix: string | undefined;
+  private tree: { delete?: () => void } | undefined;
+  private pending: Promise<unknown>[] = [];
+  private disposed = false;
 
   private constructor(
     public readonly input: AutocompleteInput,
@@ -64,6 +67,7 @@ export class HelperVars {
     try {
       const ast = await getAst(this.filepath, fullPrefix + fullSuffix);
       if (ast) {
+        this.tree = ast;
         this.treePath = await getTreePathAtCursor(ast, fullPrefix.length);
       }
     } catch (e) {
@@ -107,6 +111,38 @@ export class HelperVars {
       prunedPrefix,
       prunedSuffix,
     };
+  }
+
+  /**
+   * Register work that may still read `treePath` after the request has moved on (e.g. a context
+   * source that outlived its time budget). The tree is only freed once all of it has settled.
+   */
+  trackPending(work: Promise<unknown>) {
+    this.pending.push(work.catch(() => undefined));
+  }
+
+  /**
+   * Parse trees live in WASM memory and are not garbage collected. Free this request's tree once
+   * nothing can be using it any more.
+   */
+  dispose() {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    const tree = this.tree;
+    this.tree = undefined;
+    if (!tree) {
+      return;
+    }
+    void Promise.all(this.pending).then(() => {
+      try {
+        tree.delete?.();
+      } catch {
+        // already freed
+      }
+      this.treePath = undefined;
+    });
   }
 
   // Fast access

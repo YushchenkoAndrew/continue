@@ -5,6 +5,7 @@ import { IIdeMessenger } from "../../context/IdeMessenger";
 import { AppThunkDispatch, RootState } from "../../redux/store";
 import { editToolImpl } from "./editImpl";
 import { applyPatchImpl } from "./applyPatchImpl";
+import { askUserImpl } from "./askUserImpl";
 import { insertLinesImpl, replaceLinesImpl } from "./lineEditImpls";
 import { renameSymbolImpl } from "./renameSymbolImpl";
 import { multiEditImpl } from "./multiEditImpl";
@@ -60,6 +61,9 @@ export async function callClientTool(
         break;
       case BuiltInToolNames.ApplyPatch:
         output = await applyPatchImpl(parsedArgs, toolCall.id, extras);
+        break;
+      case BuiltInToolNames.AskUser:
+        output = await askUserImpl(parsedArgs, toolCall.id, extras);
         break;
       case BuiltInToolNames.RenameSymbol:
         output = await renameSymbolImpl(parsedArgs, toolCall.id, extras);

@@ -1,0 +1,10 @@
+--- core/tools/definitions/index.ts	2026-11-24 17:22:00.068567677 +0200
++++ core/tools/definitions/index.ts	2026-11-24 17:18:38.301426351 +0200
+@@ -31,6 +31,7 @@
+   renameSymbolTool,
+ } from "./languageIntel";
+ export { applyPatchTool } from "./applyPatch";
++export { askUserTool, updatePlanTool } from "./planning";
+ export { getProjectMemoryTool, getTaskStateTool, saveTaskStateTool, updateProjectMemoryTool } from "./projectMemory";
+ export { dependencyGraphTool, prepareContextTool, projectMapTool } from "./projectContext";
+ export { fetchUrlTool, webSearchTool } from "./webResearch";

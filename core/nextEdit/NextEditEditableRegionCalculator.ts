@@ -472,9 +472,16 @@ async function staticJump(ctx: {
 
     // Get the file's AST.
     // Getting this once helps us live-track the current node.
-    const tree =
-      await DocumentHistoryTracker.getInstance().getMostRecentAst(filepath);
-    // const tree = await getAst(filepath, fileContent);
+    // Documents are tracked lazily: build (and remember) the AST on first use instead of
+    // logging a "not found" error for every file that has not been through deleteChain yet.
+    const tracker = DocumentHistoryTracker.getInstance();
+    if (!tracker.hasDocument(filepath)) {
+      const content = (await ide.readFile(filepath)).toString();
+      const built = await getAst(filepath, content);
+      if (!built) return null;
+      tracker.addDocument(filepath, content, built);
+    }
+    const tree = tracker.getMostRecentAst(filepath);
     if (!tree) return null;
 
     // Convert cursor position to tree-sitter point format (0-based).

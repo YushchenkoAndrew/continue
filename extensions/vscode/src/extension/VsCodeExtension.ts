@@ -546,9 +546,16 @@ export class VsCodeExtension {
 
     // Listen for editor changes to clean up decorations when editor closes.
     vscode.window.onDidChangeVisibleTextEditors(async () => {
-      // If our active editor is no longer visible, clear decorations.
-      console.log("deleteChain called from onDidChangeVisibleTextEditors");
-      await NextEditProvider.getInstance().deleteChain();
+      // If our active editor is no longer visible, clear decorations. Only Next Edit has
+      // anything to clear, and deleteChain is a no-op when no chain exists.
+      if (!NextEditWindowManager.isInstantiated()) {
+        return;
+      }
+      try {
+        await NextEditProvider.getInstance().deleteChain();
+      } catch (e) {
+        console.warn("Failed to clear next edit chain:", e);
+      }
     });
 
     // Listen for selection changes to hide tooltip when cursor moves.

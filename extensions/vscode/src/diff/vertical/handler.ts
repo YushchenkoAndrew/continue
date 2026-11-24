@@ -11,7 +11,7 @@ import {
 
 import type { ApplyState, DiffLine } from "core";
 import type { VerticalDiffCodeLens } from "./manager";
-import { getFirstChangedLine } from "./util";
+import { getFirstChangedLine, planSpanEdit } from "./util";
 
 export interface VerticalDiffHandlerOptions {
   input?: string;
@@ -366,17 +366,48 @@ export class VerticalDiffHandler implements vscode.Disposable {
     const originalContentEndsWithNewline =
       originalDocumentContent.endsWith("\n");
 
-    // Add trailing newline only if the original file had one to prevent line count discrepancies
-    const replaceContent =
-      myersDiffs
-        .map((diff) => (diff.type === "old" ? "" : diff.line))
-        .join("\n") + (originalContentEndsWithNewline ? "\n" : "");
+    // Fast path: when the document still holds exactly the original text, only the changed span
+    // needs to be written. Anything unexpected falls back to replacing the whole range.
+    const span = planSpanEdit(myersDiffs);
+    const expectedOriginal =
+      oldContentWithoutTrailingNewline +
+      (originalContentEndsWithNewline ? "\n" : "");
+    const oldLinesInDiff = myersDiffs.reduce(
+      (n, d) => (d.type === "new" ? n : n + 1),
+      0,
+    );
+    const canPatchSpan =
+      span !== undefined &&
+      originalDocumentContent === expectedOriginal &&
+      oldLinesInDiff === diffLines.filter((l) => l.type !== "new").length;
 
-    // Then, we insert our diff lines
-    await this.editor.edit((editBuilder) => {
-      editBuilder.replace(this.range, replaceContent),
-        { undoStopAfter: false, undoStopBefore: false };
-    });
+    const rangeStartLine = this.range.start.line;
+    const spanStart = rangeStartLine + (span?.firstLine ?? 0);
+    const spanEnd = spanStart + (span?.oldLineCount ?? 0) - 1;
+
+    if (canPatchSpan && span && spanEnd < this.editor.document.lineCount) {
+      const spanRange = new vscode.Range(
+        spanStart,
+        0,
+        spanEnd,
+        this.editor.document.lineAt(spanEnd).text.length,
+      );
+      await this.editor.edit((editBuilder) =>
+        editBuilder.replace(spanRange, span.text),
+      );
+    } else {
+      // Add trailing newline only if the original file had one to prevent line count discrepancies
+      const replaceContent =
+        myersDiffs
+          .map((diff) => (diff.type === "old" ? "" : diff.line))
+          .join("\n") + (originalContentEndsWithNewline ? "\n" : "");
+
+      // Then, we insert our diff lines
+      await this.editor.edit((editBuilder) => {
+        (editBuilder.replace(this.range, replaceContent),
+          { undoStopAfter: false, undoStopBefore: false });
+      });
+    }
 
     // Lastly, we apply decorations
     let numRed = 0;

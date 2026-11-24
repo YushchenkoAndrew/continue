@@ -1,4 +1,5 @@
 import { ChatHistoryItem, ILLM, ToolResultChatMessage } from "..";
+import { latestPlanFromHistory } from "../tools/memory/plan";
 import { HistoryManager } from "./history";
 import { stripImages } from "./messageContent";
 
@@ -95,11 +96,19 @@ export async function compactConversation({
     {},
   );
 
+  // The plan checklist is copied verbatim rather than left to the summarizer to paraphrase.
+  const plan = latestPlanFromHistory(historyUpToIndex);
+  const summary =
+    stripImages(response.content) +
+    (plan
+      ? `\n\nCurrent plan (update with update_plan, do not recreate):\n${plan}`
+      : "");
+
   // Update the target message with the conversation summary
   const updatedHistory = [...session.history];
   updatedHistory[index] = {
     ...updatedHistory[index],
-    conversationSummary: stripImages(response.content),
+    conversationSummary: summary,
   };
 
   // Update the session with the new history

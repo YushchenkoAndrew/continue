@@ -19,19 +19,6 @@ const getRemainingTokenCount = (helper: HelperVars): number => {
 
 const TOKEN_BUFFER = 10; // We may need extra tokens for snippet description etc.
 
-/**
- * Shuffles an array in place using the Fisher-Yates algorithm.
- * @param array The array to shuffle.
- * @returns The shuffled array.
- */
-const shuffleArray = <T>(array: T[]): T[] => {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-};
-
 function filterSnippetsAlreadyInCaretWindow(
   snippets: (AutocompleteCodeSnippet | AutocompleteStaticSnippet)[],
   caretWindow: string,
@@ -45,22 +32,25 @@ export const getSnippets = (
   helper: HelperVars,
   payload: SnippetPayload,
 ): AutocompleteSnippet[] => {
+  const base = filterSnippetsAlreadyInCaretWindow(
+    [
+      ...payload.importDefinitionSnippets,
+      ...payload.rootPathSnippets,
+      ...payload.staticSnippet,
+    ],
+    helper.prunedCaretWindow,
+  );
+
   const snippets = {
     clipboard: payload.clipboardSnippets,
     recentlyVisitedRanges: payload.recentlyVisitedRangesSnippets,
     recentlyEditedRanges: payload.recentlyEditedRangeSnippets,
     diff: payload.diffSnippets,
     recentlyOpenedFiles: payload.recentlyOpenedFileSnippets,
-    base: shuffleArray(
-      filterSnippetsAlreadyInCaretWindow(
-        [
-          ...payload.rootPathSnippets,
-          ...payload.importDefinitionSnippets,
-          ...payload.staticSnippet,
-        ],
-        helper.prunedCaretWindow,
-      ),
-    ),
+    // Deterministic order (the previous random shuffle made identical requests produce different
+    // prompts, which defeats server-side prompt caching and made behaviour hard to reproduce).
+    base,
+    skeleton: payload.fileSkeletonSnippets ?? [],
   };
 
   // Define snippets with their priorities
@@ -70,6 +60,13 @@ export const getSnippets = (
     defaultPriority: number;
     snippets: AutocompleteSnippet[];
   }[] = [
+    {
+      // Cheap, high-signal structure of the current file (enclosing scope, imports, siblings).
+      key: "skeleton",
+      enabledOrPriority: true,
+      defaultPriority: 0,
+      snippets: snippets.skeleton,
+    },
     {
       key: "clipboard",
       enabledOrPriority: helper.options.experimental_includeClipboard,
@@ -110,16 +107,7 @@ export const getSnippets = (
       key: "base",
       enabledOrPriority: true,
       defaultPriority: 99, // make sure it's the last one to be processed, but still possible to override
-      snippets: shuffleArray(
-        filterSnippetsAlreadyInCaretWindow(
-          [
-            ...payload.rootPathSnippets,
-            ...payload.importDefinitionSnippets,
-            ...payload.staticSnippet,
-          ],
-          helper.prunedCaretWindow,
-        ),
-      ),
+      snippets: base,
       // TODO: Add this too to experimental config, maybe move upper in the order, since it's almost
       // always not inlucded due to diff being commonly large
     },
@@ -188,7 +176,12 @@ export const getSnippets = (
         if (remainingTokenCount >= snippetSize) {
           finalSnippets.push(snippet);
 
-          if ((snippet as AutocompleteCodeSnippet).filepath) {
+          // The skeleton describes the current file; it must not suppress that file's recently
+          // edited/visited ranges, which are deduplicated by filepath.
+          if (
+            key !== "skeleton" &&
+            (snippet as AutocompleteCodeSnippet).filepath
+          ) {
             addedFilepaths.add((snippet as AutocompleteCodeSnippet).filepath);
           }
 

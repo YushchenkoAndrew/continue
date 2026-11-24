@@ -24,6 +24,7 @@ import {
   getImplementationsImpl,
   getTypeDefinitionImpl,
 } from "./implementations/languageIntel";
+import { updatePlanImpl } from "./implementations/plan";
 import { prepareContextImpl } from "./implementations/prepareContext";
 import { projectMapImpl } from "./implementations/projectMap";
 import {
@@ -288,6 +289,8 @@ export async function callBuiltInTool(
       return await saveTaskStateImpl(args, extras);
     case BuiltInToolNames.GetTaskState:
       return await getTaskStateImpl(args, extras);
+    case BuiltInToolNames.UpdatePlan:
+      return await updatePlanImpl(args, extras);
     default:
       throw new Error(`Tool "${functionName}" not found`);
   }

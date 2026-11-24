@@ -14,6 +14,7 @@ import { myersDiff } from "core/diff/myers";
 import { ApplyAbortManager } from "core/edit/applyAbortManager";
 import { EDIT_MODE_STREAM_ID } from "core/edit/constants";
 import { stripImages } from "core/util/messageContent";
+import { StageTimer } from "core/util/stageTimer";
 import { getLastNPathParts } from "core/util/uri";
 import { editOutcomeTracker } from "../../extension/EditOutcomeTracker";
 import { VerticalDiffHandler, VerticalDiffHandlerOptions } from "./handler";
@@ -310,7 +311,9 @@ export class VerticalDiffManager {
 
     const fileUri = editor.document.uri.toString();
 
+    const timer = new StageTimer("instantApplyDiff");
     const myersDiffs = myersDiff(oldContent, newContent);
+    timer.mark("diff");
 
     const diffHandler = this.createVerticalDiffHandler(
       fileUri,
@@ -337,6 +340,7 @@ export class VerticalDiffManager {
     }
 
     await diffHandler.reapplyWithMyersDiff(myersDiffs);
+    timer.mark("edit+decorate");
 
     const scrollToLine = getFirstChangedLine(myersDiffs, 0) ?? 0;
     const range = new vscode.Range(scrollToLine, 0, scrollToLine, 0);
@@ -352,6 +356,8 @@ export class VerticalDiffManager {
       filepath: fileUri,
       toolCallId,
     });
+    timer.mark("notify");
+    timer.end();
   }
 
   async streamEdit({
