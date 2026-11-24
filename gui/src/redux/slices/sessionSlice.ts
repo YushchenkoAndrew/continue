@@ -448,6 +448,17 @@ export const sessionSlice = createSlice({
         state.history = state.history.slice(0, action.payload);
       }
     },
+    clearAssistantPlaceholder: (state, action: PayloadAction<number>) => {
+      // Empties the assistant message a discarded generation streamed into
+      const item = state.history[action.payload];
+      if (item?.message.role === "assistant") {
+        item.message.content = "";
+        (item.message as { toolCalls?: unknown }).toolCalls = undefined;
+        item.reasoning = undefined;
+        item.promptLogs = undefined;
+        item.toolCallStates = undefined;
+      }
+    },
     deleteCompaction: (state, action: PayloadAction<number>) => {
       // Removes the conversation summary from the specified message
       const historyItem = state.history[action.payload];
@@ -1072,6 +1083,7 @@ export const {
   deleteMessage,
   deleteCompaction,
   discardPartialStream,
+  clearAssistantPlaceholder,
   setIsGatheringContext,
   resetNextCodeBlockToApplyIndex,
   updateApplyState,

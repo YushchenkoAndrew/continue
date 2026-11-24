@@ -8,10 +8,30 @@ export type StepStatus = "pending" | "in_progress" | "done" | "blocked";
 export interface PlanStep {
   text: string;
   status: StepStatus;
+  /** Short reason, only for blocked steps. */
+  note?: string;
 }
 
 export const MAX_PLAN_STEPS = 20;
 export const MAX_STEP_CHARS = 240;
+export const MAX_NOTE_CHARS = 160;
+
+const NOTE_SEP = " :: ";
+
+function splitNote(raw: string): { text: string; note?: string } {
+  const at = raw.indexOf(NOTE_SEP);
+  if (at < 0) return { text: raw };
+  const note = raw.slice(at + NOTE_SEP.length).trim();
+  return { text: raw.slice(0, at).trim(), note: note || undefined };
+}
+
+function withNote(step: PlanStep): string {
+  // the separator must stay unambiguous, so it is not allowed inside the text itself
+  const text = step.text.split(NOTE_SEP).join(" : ");
+  return step.status === "blocked" && step.note
+    ? `${text}${NOTE_SEP}${step.note}`
+    : text;
+}
 
 const MARK: Record<StepStatus, string> = {
   pending: " ",
@@ -40,12 +60,12 @@ export function normalizeStatus(value: unknown): StepStatus | undefined {
 
 /** `[x] text` entries as stored in .continue/memory/task.md */
 export function stepToLine(step: PlanStep): string {
-  return `[${MARK[step.status]}] ${step.text}`;
+  return `[${MARK[step.status]}] ${withNote(step)}`;
 }
 
 export function lineToStep(line: string): PlanStep | undefined {
   const m = line.match(/^\[([ ~x!])\]\s+(.+)$/);
-  return m ? { status: FROM_MARK[m[1]], text: m[2] } : undefined;
+  return m ? { status: FROM_MARK[m[1]], ...splitNote(m[2]) } : undefined;
 }
 
 export function planProgress(steps: PlanStep[]): {
@@ -63,7 +83,7 @@ export function renderChecklist(steps: PlanStep[]): string {
   const { done, total } = planProgress(steps);
   return [
     `Progress: ${done}/${total}`,
-    ...steps.map((s, i) => `[${MARK[s.status]}] ${i + 1}. ${s.text}`),
+    ...steps.map((s, i) => `[${MARK[s.status]}] ${i + 1}. ${withNote(s)}`),
   ].join("\n");
 }
 
@@ -74,7 +94,7 @@ export function parseChecklist(
   const steps: PlanStep[] = [];
   for (const raw of text.split("\n")) {
     const m = raw.match(/^\[([ ~x!])\]\s+\d+\.\s+(.+)$/);
-    if (m) steps.push({ status: FROM_MARK[m[1]], text: m[2] });
+    if (m) steps.push({ status: FROM_MARK[m[1]], ...splitNote(m[2]) });
   }
   if (steps.length === 0) return undefined;
   const { done, total } = planProgress(steps);

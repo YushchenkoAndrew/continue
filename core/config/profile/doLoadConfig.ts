@@ -21,6 +21,7 @@ import { convertRuleBlockToSlashCommand } from "../../commands/slash/ruleBlockSl
 import { MCPManagerSingleton } from "../../context/mcp/MCPManagerSingleton";
 import MCPContextProvider from "../../context/providers/MCPContextProvider";
 import { initSlashCommand } from "../../promptFiles/initPrompt";
+import { BuiltInToolNames } from "../../tools/builtIn";
 import { getConfigDependentToolDefinitions } from "../../tools";
 import { encodeMCPToolUri } from "../../tools/callTool";
 import { getMCPToolName } from "../../tools/mcpToolName";
@@ -298,6 +299,21 @@ export default async function doLoadConfig(options: {
       ide,
     })),
   );
+
+  // A built-in tool registered twice (for example by a stale reload) is collapsed to one.
+  const seenBuiltIn = new Set<string>();
+  const builtInNames = new Set<string>(Object.values(BuiltInToolNames));
+  newConfig.tools = newConfig.tools.filter((tool) => {
+    const name = tool.function.name;
+    if (!builtInNames.has(name)) {
+      return true;
+    }
+    if (seenBuiltIn.has(name)) {
+      return false;
+    }
+    seenBuiltIn.add(name);
+    return true;
+  });
 
   // Detect duplicate tool names
   const counts: Record<string, number> = {};

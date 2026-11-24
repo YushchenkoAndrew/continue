@@ -4,6 +4,7 @@ import {
   DevDataLogEvent,
   ModelRole,
 } from "@continuedev/config-yaml";
+import type { ToolConfigReport } from "../config/toolConfigCheck";
 import { ToolPolicy } from "@continuedev/terminal-security";
 
 import {
@@ -87,6 +88,7 @@ export type ToCoreFromIdeOrWebviewProtocol = {
     void,
   ];
   "config/addGlobalRule": [undefined | { baseFilename?: string }, void];
+  "config/toolConfig": [{ action: "check" | "apply" }, ToolConfigReport];
   "config/deleteRule": [{ filepath: string }, void];
   "config/newPromptFile": [undefined, void];
   "config/newAssistantFile": [undefined, void];

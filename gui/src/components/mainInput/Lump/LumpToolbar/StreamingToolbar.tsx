@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAppSelector } from "../../../../redux/hooks";
+import { selectActivityTitle } from "../../../../util/activityTitle";
 import { getAltKeyLabel, getMetaKeyLabel, isJetBrains } from "../../../../util";
 import { GeneratingIndicator } from "./GeneratingIndicator";
 
@@ -57,17 +58,19 @@ export function StreamingToolbar({
 }: StreamingToolbarProps) {
   const jetbrains = isJetBrains();
   const waited = useSecondsWaitingForModel();
+  const activity = useAppSelector(selectActivityTitle);
+  const label = activity ?? "Generating";
   const text =
     waited !== undefined && waited >= SHOW_WAITING_AFTER_SECONDS
-      ? `Waiting for the model to respond (${waited}s)`
-      : "Generating";
+      ? `${label} · waiting for the model (${waited}s)`
+      : label;
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-2">
       <GeneratingIndicator text={text} />
       <div
         onClick={onStop}
-        className="text-2xs cursor-pointer px-1.5 py-0.5 hover:brightness-125"
+        className="text-2xs shrink-0 cursor-pointer whitespace-nowrap px-1.5 py-0.5 hover:brightness-125"
       >
         <span className="text-description">{displayText}</span>
         {/* JetBrains overrides cmd+backspace, so we have to use another shortcut */}

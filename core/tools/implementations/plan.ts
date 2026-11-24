@@ -12,6 +12,7 @@ import {
 } from "../memory/memoryStore";
 import {
   lineToStep,
+  MAX_NOTE_CHARS,
   MAX_PLAN_STEPS,
   MAX_STEP_CHARS,
   normalizeStatus,
@@ -48,14 +49,28 @@ const key = (text: string) =>
     .replace(/\s+\(after [\d, ]+\)$/, "")
     .trim();
 
+function cleanNote(value: unknown, where: string): string {
+  const note = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_NOTE_CHARS);
+  if (!note)
+    throw new Error(`${where} is blocked: add a short note saying why.`);
+  const problem = validateEntryText(note);
+  if (problem) throw new Error(`${where}: ${problem}`);
+  return note;
+}
+
 function buildSteps(raw: unknown, existing: PlanStep[]): PlanStep[] {
   if (!Array.isArray(raw))
-    throw new Error("steps must be an array of {text, status?, after?}.");
+    throw new Error(
+      "steps must be an array of {text, status?, after?, note?}.",
+    );
   if (raw.length > MAX_PLAN_STEPS)
     throw new Error(
       `A plan has at most ${MAX_PLAN_STEPS} steps; merge related ones.`,
     );
-  const previous = new Map(existing.map((s) => [key(s.text), s.status]));
+  const previous = new Map(existing.map((s) => [key(s.text), s]));
   return raw.map((item: any) => {
     let text = String(typeof item === "string" ? item : (item?.text ?? ""))
       .trim()
@@ -68,9 +83,15 @@ function buildSteps(raw: unknown, existing: PlanStep[]): PlanStep[] {
     const problem = validateEntryText(text);
     if (problem) throw new Error(`step "${text.slice(0, 40)}": ${problem}`);
     // Re-sending the same list keeps progress instead of resetting it.
-    const status =
-      normalizeStatus(item?.status) ?? previous.get(key(text)) ?? "pending";
-    return { text, status };
+    const before = previous.get(key(text));
+    const status = normalizeStatus(item?.status) ?? before?.status ?? "pending";
+    if (status !== "blocked") return { text, status };
+    const note =
+      item?.note !== undefined
+        ? cleanNote(item.note, `step "${text.slice(0, 40)}"`)
+        : before?.note;
+    if (!note) cleanNote("", `step "${text.slice(0, 40)}"`);
+    return { text, status, note };
   });
 }
 
@@ -103,7 +124,12 @@ export const updatePlanImpl: ToolImpl = async (args, extras) => {
     .map((e) => lineToStep(e.text))
     .filter((s): s is PlanStep => !!s);
 
+  const keysBefore = steps.map((x) => key(x.text)).join("\n");
   if (args?.steps !== undefined) steps = buildSteps(args.steps, steps);
+  const resentSamePlan =
+    args?.steps !== undefined &&
+    !!keysBefore &&
+    keysBefore === steps.map((x) => key(x.text)).join("\n");
   if (Array.isArray(args?.set)) {
     for (const u of args.set) {
       const n = Number(u?.step);
@@ -113,7 +139,16 @@ export const updatePlanImpl: ToolImpl = async (args, extras) => {
           `No step ${u?.step}; the plan has ${steps.length} steps.`,
         );
       if (!status) throw new Error(`Unknown status "${u?.status}".`);
-      steps[n - 1] = { ...steps[n - 1], status };
+      steps[n - 1] = {
+        text: steps[n - 1].text,
+        status,
+        ...(status === "blocked" && {
+          note:
+            u?.note !== undefined
+              ? cleanNote(u.note, `step ${n}`)
+              : (steps[n - 1].note ?? cleanNote("", `step ${n}`)),
+        }),
+      };
     }
   }
   if (steps.length === 0)
@@ -155,6 +190,9 @@ export const updatePlanImpl: ToolImpl = async (args, extras) => {
   await extras.ide.writeFile(task, rendered);
 
   let content = renderChecklist(steps);
+  if (resentSamePlan)
+    content +=
+      "\n\nPlan unchanged. Update progress with set:[{step,status}]; do not resend the steps.";
   if (steps.every((s) => s.status === "done")) {
     const marks = await findIncompleteMarkers(extras.ide);
     content += marks.length

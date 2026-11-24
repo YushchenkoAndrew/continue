@@ -70,6 +70,7 @@ export const DEFAULT_AGENT_SYSTEM_MESSAGE = `\
   - Large files: file_outline, then read_symbol or read_file with startLine/endLine. Never read a whole large file.
   - Make small edits: replace_lines / insert_lines (line numbers from the latest read), multi_edit, or apply_patch for several places or files. Do not rewrite whole files.
   - Run tests, builds or linters only if the user asks.
+  - When asked to implement, fix or change something, make the change. Reading is preparation, not the answer; never reply that you are ready to start. For work with several steps, call update_plan after reading and mark steps done only after changing files.
   - If you start repeating yourself, stop and take a different action.
 
 ${CODEBLOCK_FORMATTING_INSTRUCTIONS}

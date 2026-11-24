@@ -15,11 +15,14 @@ export const updatePlanTool: Tool = {
   function: {
     name: BuiltInToolNames.UpdatePlan,
     description:
-      "Only for complex work (4+ steps or several files); simple tasks: just do them. Create the plan once with steps, then update progress with set:[{step,status}] (don't resend steps). Statuses: pending, in_progress, done, blocked. For work that may span sessions, leave `// AI-TASK [INCOMPLETE]: <what remains>` at unfinished spots (search for existing ones first, no duplicates; remove only after verifying).",
+      "Only for complex work (4+ steps or several files); simple tasks: just do them. Create the plan once with steps, then update progress with set:[{step,status}] (don't resend steps). Statuses: pending, in_progress, done, blocked (needs a short note). Mark done only after the change is made, not after reading. For work that may span sessions, leave `// AI-TASK [INCOMPLETE]: <what remains>` at unfinished spots (search for existing ones first, no duplicates; remove only after verifying).",
     parameters: {
       type: "object",
       properties: {
-        objective: { type: "string" },
+        objective: {
+          type: "string",
+          description: "The user's request in their words, 1-2 sentences",
+        },
         approach: { type: "string" },
         files: {
           type: "array",
@@ -42,6 +45,7 @@ export const updatePlanTool: Tool = {
                 items: { type: "number" },
                 description: "Step numbers this depends on",
               },
+              note: { type: "string", description: "Why the step is blocked" },
             },
           },
         },
@@ -57,6 +61,7 @@ export const updatePlanTool: Tool = {
                 type: "string",
                 enum: ["pending", "in_progress", "done", "blocked"],
               },
+              note: { type: "string", description: "Why the step is blocked" },
             },
           },
         },

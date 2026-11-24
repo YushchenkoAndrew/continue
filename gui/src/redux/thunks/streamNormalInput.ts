@@ -11,6 +11,7 @@ import { selectSelectedChatModel } from "../slices/configSlice";
 import {
   abortStream,
   addPromptCompletionPair,
+  clearAssistantPlaceholder,
   discardPartialStream,
   errorToolCall,
   setActive,
@@ -24,6 +25,11 @@ import {
 } from "../slices/sessionSlice";
 import { ThunkApiType } from "../store";
 import { constructMessages } from "../util/constructMessages";
+import {
+  executionNotes,
+  executionNudge,
+  unearnedCompletion,
+} from "../util/executionGuard";
 
 import { modelSupportsNativeTools } from "core/llm/toolSupport";
 import { applyToolOverrides } from "core/tools/applyToolOverrides";
@@ -99,7 +105,7 @@ async function getMemoryHint(
       (await ide.fileExists(task))
     ) {
       hints.push(
-        "a saved task exists (get_task_state): check it if the user continues earlier work",
+        "a saved task exists (get_task_state): if the user continues earlier work, read it and resume at the first unfinished step instead of starting over",
       );
     }
     return hints.length ? `\n\nNote: ${hints.join("; ")}.` : "";
@@ -111,6 +117,16 @@ async function getMemoryHint(
 const LOOP_RETRY_NOTE =
   "\n\nYour previous attempt got stuck repeating itself. Do not re-analyse. Take the single most useful next action now: call a tool, or give a short answer.";
 
+// How many times a turn was pushed to keep working, per user message (see executionGuard).
+const executionNudges = new Map<string, number>();
+
+function nudgeKey(sessionId: string, history: { message: { id?: string } }[]) {
+  let i = history.length - 1;
+  while (i >= 0 && (history[i].message as { role?: string }).role !== "user")
+    i--;
+  return `${sessionId}:${i >= 0 ? (history[i].message.id ?? i) : "none"}`;
+}
+
 export const streamNormalInput = createAsyncThunk<
   void,
   {
@@ -118,12 +134,14 @@ export const streamNormalInput = createAsyncThunk<
     depth?: number;
     /** 0 = normal; 1 = retrying after a detected generation loop */
     loopRetry?: number;
+    /** System-prompt note for a retry after a turn that stopped short of the work */
+    executionNote?: string;
   },
   ThunkApiType
 >(
   "chat/streamNormalInput",
   async (
-    { legacySlashCommandData, depth = 0, loopRetry = 0 },
+    { legacySlashCommandData, depth = 0, loopRetry = 0, executionNote },
     { dispatch, extra, getState },
   ) => {
     if (process.env.NODE_ENV === "test" && depth > 50) {
@@ -176,8 +194,8 @@ export const streamNormalInput = createAsyncThunk<
       selectedChatModel,
     );
 
-    if (loopRetry > 0) {
-      // Retry after a loop: no reasoning, and tell the model to act.
+    if (loopRetry > 0 || executionNote) {
+      // Retry after a loop or an analysis-only ending: no reasoning, and tell the model to act.
       completionOptions = {
         ...completionOptions,
         reasoning: false,
@@ -191,7 +209,11 @@ export const streamNormalInput = createAsyncThunk<
       (state.session.mode === "agent"
         ? await getMemoryHint(extra.ideMessenger.ide, activeTools)
         : "") +
-      (loopRetry > 0 ? LOOP_RETRY_NOTE : "");
+      (state.session.mode === "agent"
+        ? executionNotes(state.session.history)
+        : "") +
+      (loopRetry > 0 ? LOOP_RETRY_NOTE : "") +
+      (executionNote ?? "");
 
     const systemMessage = systemToolsFramework
       ? addSystemMessageToolsToSystemMessage(
@@ -262,6 +284,11 @@ export const streamNormalInput = createAsyncThunk<
     const start = Date.now();
     const streamAborter = state.session.streamAborter;
     const startHistoryLength = state.session.history.length;
+    const lastAtStart = state.session.history.at(-1);
+    const startedOnEmptyAssistant =
+      lastAtStart?.message.role === "assistant" &&
+      !lastAtStart.message.content &&
+      !lastAtStart.reasoning;
     const loopGuard = new LoopGuard(
       LoopGuard.thinkingCapChars(selectedChatModel.contextLength),
     );
@@ -417,6 +444,31 @@ export const streamNormalInput = createAsyncThunk<
     const generatedCalls2 = selectPendingToolCalls(state2);
     await preprocessToolCalls(dispatch, extra.ideMessenger, generatedCalls2);
 
+    // 2b. A plan step for an edit may not be marked done before anything was changed
+    for (const tc of selectPendingToolCalls(getState()).filter(
+      (c) => c.toolCall.function.name === BuiltInToolNames.UpdatePlan,
+    )) {
+      const problem = unearnedCompletion(
+        getState().session.history,
+        tc.parsedArgs,
+      );
+      if (problem) {
+        dispatch(
+          errorToolCall({
+            toolCallId: tc.toolCallId,
+            output: [
+              {
+                name: "Plan not updated",
+                description: "Step not complete",
+                content: problem,
+                icon: "problems",
+              },
+            ],
+          }),
+        );
+      }
+    }
+
     // 3. Security check: evaluate updated policies based on args
     const state3 = getState();
     if (streamAborter.signal.aborted || !state3.session.isStreaming) {
@@ -440,6 +492,34 @@ export const streamNormalInput = createAsyncThunk<
 
     // 4. Execute remaining tool calls
     if (originalToolCalls.length === 0) {
+      // The model stopped without acting. If the request was to implement something (or the
+      // plan has open steps), discard that reply and try once more with a short note.
+      if (
+        state1.session.mode === "agent" &&
+        activeTools.length > 0 &&
+        !streamAborter.signal.aborted
+      ) {
+        const key = nudgeKey(state1.session.id, getState().session.history);
+        const used = executionNudges.get(key) ?? 0;
+        const note = executionNudge(getState().session.history, used);
+        if (note) {
+          executionNudges.set(key, used + 1);
+          dispatch(discardPartialStream(startHistoryLength));
+          if (startedOnEmptyAssistant) {
+            dispatch(clearAssistantPlaceholder(startHistoryLength - 1));
+          }
+          unwrapResult(
+            await dispatch(
+              streamNormalInput({
+                legacySlashCommandData,
+                depth,
+                executionNote: note,
+              }),
+            ),
+          );
+          return;
+        }
+      }
       dispatch(setInactive());
     } else if (needsApprovalPolicies.length > 0) {
       const builtInReadonlyAutoApproved = autoApprovedPolicies.filter(

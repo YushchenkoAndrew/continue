@@ -1,4 +1,5 @@
 import { fetchwithRequestOptions } from "@continuedev/fetch";
+import { checkToolConfig } from "./config/toolConfigCheck";
 import * as URI from "uri-js";
 import { v4 as uuidv4 } from "uuid";
 
@@ -388,6 +389,10 @@ export class Core {
       await this.configHandler.reloadConfig(
         "Local block created (config/addLocalWorkspaceBlock message)",
       );
+    });
+
+    on("config/toolConfig", async (msg) => {
+      return checkToolConfig(this.configHandler, this.ide, msg.data.action);
     });
 
     on("config/addGlobalRule", async (msg) => {
