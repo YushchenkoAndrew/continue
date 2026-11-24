@@ -96,7 +96,8 @@ type RequiredLLMOptions =
   | "completionOptions";
 
 export interface ILLM
-  extends Omit<LLMOptions, RequiredLLMOptions>,
+  extends
+    Omit<LLMOptions, RequiredLLMOptions>,
     Required<Pick<LLMOptions, RequiredLLMOptions>> {
   get providerName(): string;
   get underlyingProviderName(): string;
@@ -180,10 +181,7 @@ export interface ModelInstaller {
 
 export type ContextProviderType = "normal" | "query" | "submenu";
 export type ContextIndexingType =
-  | "chunk"
-  | "embeddings"
-  | "fullTextSearch"
-  | "codeSnippets";
+  "chunk" | "embeddings" | "fullTextSearch" | "codeSnippets";
 
 export interface ContextProviderDescription {
   title: ContextProviderName;
@@ -307,6 +305,54 @@ export interface Location {
   position: Position;
 }
 
+export type LanguageQueryKind =
+  | "definition"
+  | "references"
+  | "typeDefinition"
+  | "implementations"
+  | "hover"
+  | "incomingCalls"
+  | "outgoingCalls"
+  | "rename";
+
+/** Position-based query answered by the IDE's registered language providers (0-based). */
+export interface LanguageQuery {
+  kind: LanguageQueryKind;
+  filepath: string; // file URI
+  line: number;
+  character: number;
+  newName?: string; // rename only
+}
+
+export interface LanguageQueryLocation {
+  filepath: string; // file URI
+  line: number; // 0-based
+  character: number;
+  endLine: number;
+  endCharacter: number;
+}
+
+export interface LanguageQueryCall {
+  name: string;
+  kind: string;
+  location: LanguageQueryLocation;
+  callSites: LanguageQueryLocation[]; // where the call happens
+}
+
+export interface LanguageQueryTextEdit extends LanguageQueryLocation {
+  newText: string;
+}
+
+export interface LanguageQueryResult {
+  /** false when no provider answered (language extension missing / not ready) */
+  supported: boolean;
+  message?: string;
+  locations?: LanguageQueryLocation[];
+  hover?: string;
+  calls?: LanguageQueryCall[];
+  edits?: { filepath: string; edits: LanguageQueryTextEdit[] }[];
+}
+
 export interface FileWithContents {
   filepath: string;
   contents: string;
@@ -333,11 +379,7 @@ export interface CompletionOptions extends BaseCompletionOptions {
 }
 
 export type ChatMessageRole =
-  | "user"
-  | "assistant"
-  | "thinking"
-  | "system"
-  | "tool";
+  "user" | "assistant" | "thinking" | "system" | "tool";
 
 export type TextMessagePart = {
   type: "text";
@@ -930,6 +972,8 @@ export interface IDE {
   getSignatureHelp(location: Location): Promise<SignatureHelp | null>; // TODO: add to jetbrains
   getReferences(location: Location): Promise<RangeInFile[]>;
   getDocumentSymbols(textDocumentIdentifier: string): Promise<DocumentSymbol[]>;
+  /** Optional: answered by the IDE's language providers (VS Code). */
+  languageQuery?(query: LanguageQuery): Promise<LanguageQueryResult>;
 
   // Callbacks
   onDidChangeActiveTextEditor(callback: (fileUri: string) => void): void;
@@ -1342,10 +1386,7 @@ export interface StreamableHTTPOptions {
 }
 
 export type TransportOptions =
-  | StdioOptions
-  | WebSocketOptions
-  | SSEOptions
-  | StreamableHTTPOptions;
+  StdioOptions | WebSocketOptions | SSEOptions | StreamableHTTPOptions;
 
 export type MCPConnectionStatus =
   | "disabled"
@@ -1515,8 +1556,7 @@ interface StreamDiffLinesOptionsApply extends StreamDiffLinesOptionsBase {
 }
 
 type StreamDiffLinesPayload =
-  | StreamDiffLinesOptionsApply
-  | StreamDiffLinesOptionsEdit;
+  StreamDiffLinesOptionsApply | StreamDiffLinesOptionsEdit;
 
 export interface HighlightedCodePayload {
   rangeInFileWithContents: RangeInFileWithContents;
@@ -1799,9 +1839,7 @@ export interface Config {
   embeddingsProvider?: EmbeddingsProviderDescription | ILLM;
   /** The model that Continue will use for tab autocompletions. */
   tabAutocompleteModel?:
-    | CustomLLM
-    | JSONModelDescription
-    | (CustomLLM | JSONModelDescription)[];
+    CustomLLM | JSONModelDescription | (CustomLLM | JSONModelDescription)[];
   /** Options for tab autocomplete */
   tabAutocompleteOptions?: Partial<TabAutocompleteOptions>;
   /** UI styles customization */

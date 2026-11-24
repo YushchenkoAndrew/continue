@@ -73,6 +73,10 @@ const editToolNames: string[] = [
   BuiltInToolNames.EditExistingFile,
   BuiltInToolNames.SingleFindAndReplace,
   BuiltInToolNames.MultiEdit,
+  BuiltInToolNames.ReplaceLines,
+  BuiltInToolNames.InsertLines,
+  BuiltInToolNames.ApplyPatch,
+  BuiltInToolNames.RenameSymbol,
 ];
 export function isEditTool(toolName: string) {
   return editToolNames.includes(toolName);

@@ -221,6 +221,22 @@ export function constructMessages(
     });
   }
 
+  // After compaction the kept history can start with an assistant step; many chat
+  // templates (e.g. Gemma) require a user turn first.
+  if (summaryContent) {
+    const firstIdx = msgs.findIndex((m) => m.message.role !== "system");
+    if (firstIdx !== -1 && msgs[firstIdx].message.role !== "user") {
+      msgs.splice(firstIdx, 0, {
+        ctxItems: [],
+        message: {
+          role: "user",
+          content:
+            "Continue the task. Earlier work is summarized in the system message.",
+        },
+      });
+    }
+  }
+
   const messages = msgs.map((m) => m.message);
   return {
     messages,

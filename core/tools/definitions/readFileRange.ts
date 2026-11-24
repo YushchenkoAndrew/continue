@@ -19,31 +19,28 @@ export const readFileRangeTool: Tool = {
   function: {
     name: BuiltInToolNames.ReadFileRange,
     description:
-      "Use this tool to read a specific range of lines from an existing file. Only supports positive line numbers (1-based from start). For reading from the end of a file, use the terminal tool with 'tail' command instead.",
+      "Read lines startLine-endLine of a file (1-based, numbered). Output is bounded; continue with the next startLine.",
     parameters: {
       type: "object",
       required: ["filepath", "startLine", "endLine"],
       properties: {
         filepath: {
           type: "string",
-          description:
-            "The path of the file to read, relative to the root of the workspace (NOT uri or absolute path)",
+          description: "Path relative to the workspace root",
         },
         startLine: {
           type: "number",
-          description:
-            "The starting line number (1-based from start). Must be a positive integer. Example: 1 = first line, 10 = tenth line",
+          description: "First line (1-based)",
         },
         endLine: {
           type: "number",
-          description:
-            "The ending line number (1-based from start). Must be a positive integer greater than or equal to startLine. Example: 10 = tenth line, 20 = twentieth line",
+          description: "Last line (1-based, >= startLine)",
         },
       },
     },
   },
   systemMessageDescription: {
-    prefix: `To read a specific range of lines from a file, use the ${BuiltInToolNames.ReadFileRange} tool. Only supports positive line numbers (1-based from start). For reading from the end of files, use the terminal tool with 'tail' command instead:`,
+    prefix: `To read a line range, use ${BuiltInToolNames.ReadFileRange}:`,
     exampleArgs: [
       ["filepath", "path/to/the_file.txt"],
       ["startLine", 10],
@@ -66,9 +63,7 @@ export const readFileRangeTool: Tool = {
     processedArgs?: Record<string, unknown>,
   ): ToolPolicy => {
     const resolvedPath = processedArgs?.resolvedPath as
-      | ResolvedPath
-      | null
-      | undefined;
+      ResolvedPath | null | undefined;
     if (!resolvedPath) return basePolicy;
 
     return evaluateFileAccessPolicy(basePolicy, resolvedPath.isWithinWorkspace);

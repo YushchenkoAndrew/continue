@@ -13,7 +13,7 @@ export const globSearchTool: Tool = {
   function: {
     name: BuiltInToolNames.FileGlobSearch,
     description:
-      "Search for files recursively in the project using glob patterns. Supports ** for recursive directory search. Will not show many build, cache, secrets dirs/files (can use ls tool instead). Output may be truncated; use targeted patterns",
+      "Find files by glob pattern (supports **). Output is truncated; use targeted patterns.",
     parameters: {
       type: "object",
       required: ["pattern"],

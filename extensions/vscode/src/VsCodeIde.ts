@@ -12,6 +12,7 @@ import {
   executeSignatureHelpProvider,
   executeSymbolProvider,
 } from "./autocomplete/lsp";
+import { runLanguageQuery } from "./languageQuery";
 import { Repository } from "./otherExtensions/git";
 import { SecretStorage } from "./stubs/SecretStorage";
 import { VsCodeIdeUtils } from "./util/ideUtils";
@@ -27,6 +28,8 @@ import type {
   IdeInfo,
   IdeSettings,
   IndexTag,
+  LanguageQuery,
+  LanguageQueryResult,
   Location,
   Problem,
   RangeInFile,
@@ -113,6 +116,10 @@ class VsCodeIde implements IDE {
     });
 
     return result;
+  }
+
+  async languageQuery(query: LanguageQuery): Promise<LanguageQueryResult> {
+    return runLanguageQuery(query);
   }
 
   async getReferences(location: Location): Promise<RangeInFile[]> {

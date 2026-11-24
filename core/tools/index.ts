@@ -1,45 +1,71 @@
 import { ConfigDependentToolParams, Tool } from "..";
-import { isRecommendedAgentModel } from "../llm/toolSupport";
 import * as toolDefinitions from "./definitions";
 
 // I'm writing these as functions because we've messed up 3 TIMES by pushing to const, causing duplicate tool definitions on subsequent config loads.
 export const getBaseToolDefinitions = () => [
+  // read / navigate (bounded, numbered output)
   toolDefinitions.readFileTool,
-  toolDefinitions.createNewFileTool,
-  toolDefinitions.runTerminalCommandTool,
+  toolDefinitions.fileOutlineTool,
+  toolDefinitions.readSymbolTool,
+  toolDefinitions.codebaseTool,
   toolDefinitions.globSearchTool,
-  toolDefinitions.viewDiffTool,
-  toolDefinitions.readCurrentlyOpenFileTool,
   toolDefinitions.lsTool,
+  toolDefinitions.readCurrentlyOpenFileTool,
+  toolDefinitions.viewDiffTool,
+  // language intelligence (VS Code providers)
+  toolDefinitions.findDefinitionTool,
+  toolDefinitions.findReferencesTool,
+  toolDefinitions.getTypeDefinitionTool,
+  toolDefinitions.getImplementationsTool,
+  toolDefinitions.getHoverInfoTool,
+  toolDefinitions.getCallHierarchyTool,
+  // project understanding
+  toolDefinitions.projectMapTool,
+  toolDefinitions.dependencyGraphTool,
+  toolDefinitions.prepareContextTool,
+  // editing
+  toolDefinitions.multiEditTool,
+  toolDefinitions.replaceLinesTool,
+  toolDefinitions.insertLinesTool,
+  toolDefinitions.applyPatchTool,
+  toolDefinitions.renameSymbolTool,
+  toolDefinitions.createNewFileTool,
+  // research, verification, memory
+  toolDefinitions.webSearchTool,
+  toolDefinitions.fetchUrlTool,
+  toolDefinitions.findTestsTool,
+  toolDefinitions.runTestsTool,
+  toolDefinitions.runChecksTool,
+  toolDefinitions.getProjectMemoryTool,
+  toolDefinitions.updateProjectMemoryTool,
+  toolDefinitions.saveTaskStateTool,
+  toolDefinitions.getTaskStateTool,
+  // misc
+  toolDefinitions.runTerminalCommandTool,
   toolDefinitions.createRuleBlock,
-  toolDefinitions.fetchUrlContentTool,
 ];
 
 export const getConfigDependentToolDefinitions = async (
   params: ConfigDependentToolParams,
 ): Promise<Tool[]> => {
-  const { modelName, enableExperimentalTools, isRemote } = params;
+  const { enableExperimentalTools, isRemote } = params;
   const tools: Tool[] = [];
 
   tools.push(await toolDefinitions.requestRuleTool(params));
   tools.push(await toolDefinitions.readSkillTool(params));
 
-  tools.push(toolDefinitions.searchWebTool);
-
   if (enableExperimentalTools) {
+    // Legacy tools: whole-file rewrites through the apply model, and range reads
+    // that read_file already covers. Kept for configs that rely on them.
     tools.push(
       toolDefinitions.viewRepoMapTool,
       toolDefinitions.viewSubdirectoryTool,
-      toolDefinitions.codebaseTool,
       toolDefinitions.readFileRangeTool,
+      toolDefinitions.editFileTool,
+      toolDefinitions.singleFindAndReplaceTool,
+      toolDefinitions.searchWebTool,
+      toolDefinitions.fetchUrlContentTool,
     );
-  }
-
-  if (modelName && isRecommendedAgentModel(modelName)) {
-    tools.push(toolDefinitions.multiEditTool);
-  } else {
-    tools.push(toolDefinitions.editFileTool);
-    tools.push(toolDefinitions.singleFindAndReplaceTool);
   }
 
   // missing support for remote os calls: https://github.com/microsoft/vscode/issues/252269

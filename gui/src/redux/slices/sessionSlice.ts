@@ -94,8 +94,7 @@ export function handleToolCallsInMessage(
     // Update the message's toolCalls array to reflect the processed tool calls
     // We can safely cast because we verified the role above
     const curMessage = lastItem.message as
-      | AssistantChatMessage
-      | ThinkingChatMessage;
+      AssistantChatMessage | ThinkingChatMessage;
     curMessage.toolCalls = lastItem.toolCallStates.map(
       (state) => state.toolCall,
     );
@@ -442,6 +441,12 @@ export const sessionSlice = createSlice({
       state.inlineErrorMessage = undefined;
       state.isPruned = false;
       state.contextPercentage = undefined;
+    },
+    discardPartialStream: (state, action: PayloadAction<number>) => {
+      // Drops history items produced by an aborted (looping) generation
+      if (action.payload >= 0 && action.payload < state.history.length) {
+        state.history = state.history.slice(0, action.payload);
+      }
     },
     deleteCompaction: (state, action: PayloadAction<number>) => {
       // Removes the conversation summary from the specified message
@@ -1066,6 +1071,7 @@ export const {
   setMainEditorContentTrigger,
   deleteMessage,
   deleteCompaction,
+  discardPartialStream,
   setIsGatheringContext,
   resetNextCodeBlockToApplyIndex,
   updateApplyState,

@@ -46,6 +46,7 @@ import {
   updateProcessOutput,
 } from "../../util/processTerminalStates";
 import { getBooleanArg, getStringArg } from "../parseArgs";
+import { shellReadGuardMessage } from "./shellReadGuard";
 
 /**
  * Resolves the working directory from workspace dirs.
@@ -108,6 +109,10 @@ const LOCAL_ONLY = ["", "local"];
 
 export const runTerminalCommandImpl: ToolImpl = async (args, extras) => {
   const command = getStringArg(args, "command");
+  const steer = shellReadGuardMessage(command);
+  if (steer) {
+    throw new ContinueError(ContinueErrorReason.Unspecified, steer);
+  }
   // Default to waiting for completion if not specified
   const waitForCompletion =
     getBooleanArg(args, "waitForCompletion", false) ?? true;

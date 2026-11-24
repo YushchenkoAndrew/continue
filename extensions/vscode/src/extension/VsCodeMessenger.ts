@@ -379,6 +379,10 @@ export class VsCodeMessenger {
       return await ide.gotoDefinition(msg.data.location);
     });
 
+    this.onWebviewOrCore("languageQuery", async (msg) => {
+      return await ide.languageQuery(msg.data.query);
+    });
+
     this.onWebviewOrCore("getReferences", async (msg) => {
       return await ide.getReferences(msg.data.location);
     });

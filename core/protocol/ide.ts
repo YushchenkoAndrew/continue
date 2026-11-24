@@ -6,6 +6,8 @@ import type {
   IdeInfo,
   IdeSettings,
   IndexTag,
+  LanguageQuery,
+  LanguageQueryResult,
   Location,
   Problem,
   Range,
@@ -84,6 +86,7 @@ export type ToIdeFromWebviewOrCoreProtocol = {
   gotoTypeDefinition: [{ location: Location }, RangeInFile[]];
   getSignatureHelp: [{ location: Location }, SignatureHelp | null];
   getReferences: [{ location: Location }, RangeInFile[]];
+  languageQuery: [{ query: LanguageQuery }, LanguageQueryResult];
   getDocumentSymbols: [{ textDocumentIdentifier: string }, DocumentSymbol[]];
 
   reportError: [any, void];
