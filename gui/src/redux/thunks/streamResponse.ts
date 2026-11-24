@@ -4,13 +4,16 @@ import { InputModifiers } from "core";
 
 import { v4 as uuidv4 } from "uuid";
 import { resolveEditorContent } from "../../components/mainInput/TipTapEditor/utils/resolveEditorContent";
+import { renderChatMessage } from "core/util/messageContent";
 import { selectSelectedChatModel } from "../slices/configSlice";
 import {
   resetNextCodeBlockToApplyIndex,
+  setActive,
   submitEditorAndInitAtIndex,
   updateHistoryItemAtIndex,
 } from "../slices/sessionSlice";
 import { ThunkApiType } from "../store";
+import { runCouncilThunk } from "./council";
 import { streamNormalInput } from "./streamNormalInput";
 import { streamThunkWrapper } from "./streamThunkWrapper";
 import { updateFileSymbolsFromFiles } from "./updateFileSymbols";
@@ -69,6 +72,7 @@ export const streamResponseThunk = createAsyncThunk<
         ];
         void dispatch(updateFileSymbolsFromFiles(filesForSymbols));
 
+        const messageId = uuidv4();
         dispatch(
           updateHistoryItemAtIndex({
             index: inputIndex,
@@ -76,12 +80,42 @@ export const streamResponseThunk = createAsyncThunk<
               message: {
                 role: "user",
                 content,
-                id: uuidv4(),
+                id: messageId,
               },
               contextItems: selectedContextItems,
             },
           }),
         );
+
+        // Opt-in council: analyse the task with several agents first. It only
+        // produces a plan; implementation still goes through the normal agent.
+        if (
+          getState().session.mode === "agent" &&
+          getState().council.enabled &&
+          !legacyCommandWithInput
+        ) {
+          const task = renderChatMessage({ role: "user", content }).trim();
+          if (task) {
+            dispatch(setActive()); // shows the stop button while the council works
+            try {
+              const council = unwrapResult(
+                await dispatch(
+                  runCouncilThunk({
+                    task,
+                    turnKey: messageId,
+                    extraContext: selectedContextItems
+                      .map((c) => `## ${c.name}\n${c.content.slice(0, 3000)}`)
+                      .join("\n\n"),
+                  }),
+                ),
+              );
+              // the user pressed stop: do not start the agent
+              if (council.outcome === "cancelled") return;
+            } catch (e) {
+              console.error("Council failed, continuing without it", e);
+            }
+          }
+        }
 
         unwrapResult(
           await dispatch(

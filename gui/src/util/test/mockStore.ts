@@ -5,6 +5,9 @@ import { MockIdeMessenger } from "../../context/MockIdeMessenger";
 import configReducer, {
   INITIAL_CONFIG_SLICE,
 } from "../../redux/slices/configSlice";
+import councilReducer, {
+  INITIAL_COUNCIL_STATE,
+} from "../../redux/slices/councilSlice";
 import editModeStateReducer, {
   INITIAL_EDIT_STATE,
 } from "../../redux/slices/editState";
@@ -31,6 +34,7 @@ export const getEmptyRootState: () => RootState = () => {
     indexing: INITIAL_INDEXING_STATE,
     profiles: INITIAL_PROFILES_STATE,
     tabs: INITIAL_TABS_STATE,
+    council: INITIAL_COUNCIL_STATE,
   };
   const { streamAborter, ...serializableSession } = INITIAL_SESSION_STATE;
   const sessionCopy = copyOf(serializableSession) as Omit<
@@ -69,6 +73,7 @@ export const createMockStore = (
       indexing: indexingReducer,
       tabs: tabsReducer,
       profiles: profilesReducer,
+      council: councilReducer,
     },
     preloadedState: {
       ...getEmptyRootState(),

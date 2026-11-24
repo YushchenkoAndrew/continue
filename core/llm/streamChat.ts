@@ -30,7 +30,18 @@ export async function* llmStreamChat(
     messageOptions,
   } = msg.data;
 
-  const model = config.selectedModelByRole.chat;
+  const requestedTitle = msg.data.modelTitle;
+  const selected = config.selectedModelByRole.chat;
+  const model =
+    requestedTitle && requestedTitle !== selected?.title
+      ? config.modelsByRole.chat.find((m) => m.title === requestedTitle)
+      : selected;
+
+  if (requestedTitle && !model) {
+    throw new Error(
+      `Model "${requestedTitle}" is not available for the chat role`,
+    );
+  }
 
   if (!model) {
     throw new Error("No chat model selected");

@@ -21,9 +21,10 @@ import TimelineItem from "../../components/gui/TimelineItem";
 import { NewSessionButton } from "../../components/mainInput/belowMainInput/NewSessionButton";
 import ThinkingBlockPeek from "../../components/mainInput/belowMainInput/ThinkingBlockPeek";
 import ContinueInputBox from "../../components/mainInput/ContinueInputBox";
-import { OverflowProbe } from "../../components/OverflowProbe";
 import { PlanRoadmap } from "../../components/PlanRoadmap";
 import { ChatHeader } from "../../components/ChatHeader";
+import { LiveActivity } from "../../components/LiveActivity";
+import { CouncilPanel } from "../../components/council/CouncilPanel";
 import { ToolConfigNotice } from "../../components/ToolConfigNotice";
 import { useOnboardingCard } from "../../components/OnboardingCard";
 import StepContainer from "../../components/StepContainer";
@@ -127,6 +128,7 @@ export function Chat() {
     (store) => store.config.config.ui?.showSessionTabs,
   );
   const isStreaming = useAppSelector((state) => state.session.isStreaming);
+  const councilTurnKey = useAppSelector((state) => state.council.run?.turnKey);
   const [stepsOpen] = useState<(boolean | undefined)[]>([]);
   const mainTextInputRef = useRef<HTMLInputElement>(null);
   const stepsDivRef = useRef<HTMLDivElement>(null);
@@ -396,7 +398,6 @@ export function Chat() {
 
   return (
     <>
-      <OverflowProbe />
       {!!showSessionTabs && !isInEdit && <TabBar ref={tabsRef} />}
       <ChatHeader />
       {widget}
@@ -424,9 +425,12 @@ export function Chat() {
               >
                 {renderChatHistoryItem(item, index)}
               </ErrorBoundary>
+              {councilTurnKey !== undefined &&
+                item.message.id === councilTurnKey && <CouncilPanel />}
               {index === history.length - 1 && <InlineErrorMessage />}
             </div>
           ))}
+        <LiveActivity />
       </StepsDiv>
       <div className={"relative mx-auto w-full max-w-3xl shrink-0"}>
         <ToolConfigNotice />

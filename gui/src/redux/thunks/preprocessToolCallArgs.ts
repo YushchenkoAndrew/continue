@@ -7,6 +7,7 @@ import {
   setProcessedToolCallArgs,
   updateToolCallOutput,
 } from "../slices/sessionSlice";
+import { truncatedArgsMessage } from "../../util/truncatedToolCall";
 import { AppThunkDispatch } from "../store";
 
 export async function preprocessToolCalls(
@@ -17,6 +18,25 @@ export async function preprocessToolCalls(
   // Tool call pre-processing
   await Promise.all(
     generatedToolCalls.map(async (tcState) => {
+      const truncated = truncatedArgsMessage(tcState);
+      if (truncated) {
+        dispatch(errorToolCall({ toolCallId: tcState.toolCallId }));
+        dispatch(
+          updateToolCallOutput({
+            toolCallId: tcState.toolCallId,
+            contextItems: [
+              {
+                icon: "problems",
+                name: "Tool call cut off",
+                description: "Arguments incomplete",
+                content: truncated,
+                hidden: false,
+              },
+            ],
+          }),
+        );
+        return;
+      }
       let errorReason: ContinueErrorReason | undefined = undefined;
       let errorMessage: string | undefined = undefined;
       let preprocessedArgs: Record<string, unknown> | undefined = undefined;

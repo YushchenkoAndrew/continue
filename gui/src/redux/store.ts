@@ -16,6 +16,7 @@ import autoMergeLevel2 from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import storage from "redux-persist/lib/storage";
 import { IdeMessenger, IIdeMessenger } from "../context/IdeMessenger";
 import configReducer from "./slices/configSlice";
+import councilReducer from "./slices/councilSlice";
 import editModeStateReducer from "./slices/editState";
 import indexingReducer from "./slices/indexingSlice";
 import { profilesReducer } from "./slices/profilesSlice";
@@ -31,6 +32,7 @@ const rootReducer = combineReducers({
   indexing: indexingReducer,
   tabs: tabsReducer,
   profiles: profilesReducer,
+  council: councilReducer,
 });
 
 const saveSubsetFilters = [
@@ -61,6 +63,7 @@ const saveSubsetFilters = [
   createFilter("indexing", []),
   createFilter("tabs", ["tabs"]),
   createFilter("profiles", ["preferencesByProfileId", "selectedProfileId"]),
+  createFilter("council", ["enabled"]),
 ];
 
 const migrations: MigrationManifest = {

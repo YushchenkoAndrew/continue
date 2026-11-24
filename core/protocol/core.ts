@@ -225,6 +225,11 @@ export type ToCoreFromIdeOrWebviewProtocol = {
       messages: ChatMessage[];
       completionOptions: LLMFullCompletionOptions;
       title: string;
+      /**
+       * Optional: run this request on the chat-role model with this title
+       * instead of the selected chat model. Used by council agents.
+       */
+      modelTitle?: string;
       messageOptions?: MessageOption;
       legacySlashCommandData?: {
         command: SlashCommandDescWithSource;

@@ -7,6 +7,7 @@ import {
   resetNextCodeBlockToApplyIndex,
   streamUpdate,
 } from "../slices/sessionSlice";
+import { recordFileKnowledge } from "../../util/staleFileGuard";
 import { ThunkApiType } from "../store";
 import { streamNormalInput } from "./streamNormalInput";
 import { streamThunkWrapper } from "./streamThunkWrapper";
@@ -40,7 +41,7 @@ export const streamResponseAfterToolCall = createAsyncThunk<
   ThunkApiType
 >(
   "chat/streamAfterToolCall",
-  async ({ toolCallId, depth = 0 }, { dispatch, getState }) => {
+  async ({ toolCallId, depth = 0 }, { dispatch, extra, getState }) => {
     await dispatch(
       streamThunkWrapper(async () => {
         const state = getState();
@@ -54,6 +55,16 @@ export const streamResponseAfterToolCall = createAsyncThunk<
         }
 
         const toolOutput = toolCallState.output ?? [];
+
+        // Remember what the model now knows about the file, for the stale-file guard
+        if (toolCallState.status === "done") {
+          await recordFileKnowledge(
+            extra.ideMessenger.ide,
+            state.session.id,
+            toolCallState.toolCall.function.name,
+            toolCallState.parsedArgs,
+          );
+        }
 
         dispatch(resetNextCodeBlockToApplyIndex());
 

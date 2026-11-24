@@ -207,6 +207,7 @@ export async function configYamlToContinueConfig(options: {
       continueConfig.requestOptions,
     ),
   }));
+  continueConfig.council = config.council;
   continueConfig.docs = config.docs?.map((doc) => ({
     title: doc.name,
     startUrl: doc.startUrl,

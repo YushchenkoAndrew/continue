@@ -13,6 +13,7 @@ import {
 } from "core/util/repetitionDetector";
 
 import { callClientTool } from "../../util/clientTools/callClientTool";
+import { staleFileRefusal } from "../../util/staleFileGuard";
 import { selectSelectedChatModel } from "../slices/configSlice";
 import {
   acceptToolCall,
@@ -120,7 +121,13 @@ export const callToolById = createAsyncThunk<
       toolCallId,
       toolCallState.toolCall.function.name,
       toolCallState.parsedArgs,
-    );
+    ) ??
+    (await staleFileRefusal(
+      extra.ideMessenger.ide,
+      state.session.id,
+      toolCallState.toolCall.function.name,
+      toolCallState.parsedArgs,
+    ));
   if (refusal) {
     error = new ContinueError(ContinueErrorReason.Unspecified, refusal);
     streamResponse = true;

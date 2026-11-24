@@ -106,6 +106,26 @@ function appendReasoningFieldsIfSupported(
   }
 }
 
+/**
+ * Servers such as llama.cpp parse `tool_calls[].function.arguments` of earlier
+ * assistant messages and answer 500 when it is not valid JSON. A call that was
+ * cut off by the output limit leaves exactly that behind, so it must never be
+ * replayed as-is.
+ */
+export function validJsonArguments(args: unknown): string {
+  if (typeof args !== "string") {
+    return args && typeof args === "object" ? JSON.stringify(args) : "{}";
+  }
+  const trimmed = args.trim();
+  if (!trimmed) return "{}";
+  try {
+    JSON.parse(trimmed);
+    return args;
+  } catch {
+    return "{}";
+  }
+}
+
 export function toChatMessage(
   message: ChatMessage,
   options: CompletionOptions,
@@ -160,7 +180,7 @@ export function toChatMessage(
         type: toolCall.type!,
         function: {
           name: toolCall.function?.name!,
-          arguments: toolCall.function?.arguments || "{}",
+          arguments: validJsonArguments(toolCall.function?.arguments),
         },
       }));
     }
@@ -1027,8 +1047,7 @@ export function toResponsesInput(messages: ChatMessage[]): ResponseInput {
         const allRespIds =
           (msg.metadata?.responsesOutputItemIds as string[] | undefined) || [];
         const respId = msg.metadata?.responsesOutputItemId as
-          | string
-          | undefined;
+          string | undefined;
         const fcIds = allRespIds.filter((id) => id.startsWith("fc_"));
         if (fcIds.length === 0 && respId?.startsWith("fc_")) {
           fcIds.push(respId);

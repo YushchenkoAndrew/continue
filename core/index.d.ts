@@ -1858,6 +1858,61 @@ export interface Config {
 }
 
 // in the actual Continue source code
+export type CouncilAgentRole =
+  | "architect"
+  | "implementer"
+  | "code-reviewer"
+  | "alternative-thinker"
+  | "performance"
+  | "security"
+  | "judge";
+
+export interface CouncilAgentConfig {
+  id: string;
+  name?: string;
+  role: CouncilAgentRole;
+  /** Title of a chat-role model; defaults to the selected chat model */
+  model?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+  priority?: number;
+}
+
+/** Optional `council:` block of config.yaml. Every field has a default. */
+export interface CouncilConfig {
+  enabled?: boolean;
+  execution?: {
+    mode?: "sequential" | "parallel" | "hybrid";
+    maxConcurrency?: number;
+    maxAgents?: number;
+    maxRounds?: number;
+    timeout?: number;
+  };
+  context?: {
+    sharedContext?: boolean;
+    maxContextPerAgent?: number;
+    maxOutputTokens?: number;
+  };
+  selection?: {
+    strategy?: "weighted";
+    requireJudge?: boolean;
+    blindEvaluation?: boolean;
+  };
+  reputation?: { enabled?: boolean };
+  agents?: CouncilAgentConfig[];
+  evaluation?: {
+    weights?: {
+      correctness?: number;
+      requirements?: number;
+      maintainability?: number;
+      performance?: number;
+      security?: number;
+      simplicity?: number;
+    };
+  };
+}
+
 export interface ContinueConfig {
   allowAnonymousTelemetry?: boolean;
   // systemMessage?: string;
@@ -1871,6 +1926,7 @@ export interface ContinueConfig {
   tabAutocompleteOptions?: Partial<TabAutocompleteOptions>;
   ui?: ContinueUIConfig;
   experimental?: ExperimentalConfig;
+  council?: CouncilConfig;
   analytics?: AnalyticsConfig;
   docs?: SiteIndexingConfig[];
   tools: Tool[];
@@ -1893,6 +1949,7 @@ export interface BrowserSerializedContinueConfig {
   userToken?: string;
   ui?: ContinueUIConfig;
   experimental?: ExperimentalConfig;
+  council?: CouncilConfig;
   analytics?: AnalyticsConfig;
   docs?: SiteIndexingConfig[];
   tools: Omit<Tool, "preprocessArgs", "evaluateToolCallPolicy">[];

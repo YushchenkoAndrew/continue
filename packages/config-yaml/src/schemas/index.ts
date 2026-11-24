@@ -97,6 +97,74 @@ const envRecord = z.record(
   z.union([z.string(), z.number(), z.boolean()]),
 );
 
+export const councilAgentRoles = [
+  "architect",
+  "implementer",
+  "code-reviewer",
+  "alternative-thinker",
+  "performance",
+  "security",
+  "judge",
+] as const;
+
+export const councilAgentSchema = z.object({
+  id: z.string(),
+  name: z.string().optional(),
+  role: z.enum(councilAgentRoles),
+  /** Title of a chat-role model. Defaults to the selected chat model. */
+  model: z.string().optional(),
+  systemPrompt: z.string().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  maxOutputTokens: z.number().int().positive().optional(),
+  priority: z.number().optional(),
+});
+
+export const councilSchema = z.object({
+  enabled: z.boolean().optional(),
+  execution: z
+    .object({
+      mode: z.enum(["sequential", "parallel", "hybrid"]).optional(),
+      maxConcurrency: z.number().int().positive().optional(),
+      maxAgents: z.number().int().positive().optional(),
+      maxRounds: z.number().int().min(0).optional(),
+      timeout: z.number().int().positive().optional(),
+    })
+    .optional(),
+  context: z
+    .object({
+      sharedContext: z.boolean().optional(),
+      maxContextPerAgent: z.number().int().positive().optional(),
+      maxOutputTokens: z.number().int().positive().optional(),
+    })
+    .optional(),
+  selection: z
+    .object({
+      strategy: z.enum(["weighted"]).optional(),
+      requireJudge: z.boolean().optional(),
+      blindEvaluation: z.boolean().optional(),
+    })
+    .optional(),
+  reputation: z.object({ enabled: z.boolean().optional() }).optional(),
+  agents: z.array(councilAgentSchema).optional(),
+  evaluation: z
+    .object({
+      weights: z
+        .object({
+          correctness: z.number().min(0).optional(),
+          requirements: z.number().min(0).optional(),
+          maintainability: z.number().min(0).optional(),
+          performance: z.number().min(0).optional(),
+          security: z.number().min(0).optional(),
+          simplicity: z.number().min(0).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
+export type CouncilYaml = z.infer<typeof councilSchema>;
+export type CouncilAgentYaml = z.infer<typeof councilAgentSchema>;
+
 export const baseConfigYamlSchema = z.object({
   name: z.string(),
   version: z.string(),
@@ -150,6 +218,7 @@ export const configYamlSchema = baseConfigYamlSchema.extend({
     .optional(),
   prompts: z.array(blockOrSchema(promptSchema)).optional(),
   docs: z.array(blockOrSchema(docSchema)).optional(),
+  council: councilSchema.optional(),
 });
 
 export type ConfigYaml = z.infer<typeof configYamlSchema>;
@@ -162,6 +231,7 @@ export const assistantUnrolledSchema = baseConfigYamlSchema.extend({
   rules: z.array(ruleSchema.nullable()).optional(),
   prompts: z.array(promptSchema.nullable()).optional(),
   docs: z.array(docSchema.nullable()).optional(),
+  council: councilSchema.optional(),
 });
 
 export type AssistantUnrolled = z.infer<typeof assistantUnrolledSchema>;
@@ -174,6 +244,7 @@ export const assistantUnrolledSchemaNonNullable = baseConfigYamlSchema.extend({
   rules: z.array(ruleSchema).optional(),
   prompts: z.array(promptSchema).optional(),
   docs: z.array(docSchema).optional(),
+  council: councilSchema.optional(),
 });
 
 export type AssistantUnrolledNonNullable = z.infer<

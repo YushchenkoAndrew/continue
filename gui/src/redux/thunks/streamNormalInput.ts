@@ -43,6 +43,7 @@ import {
 } from "../selectors/selectToolCalls";
 import { getBaseSystemMessage } from "../util/getBaseSystemMessage";
 import { autoCompact } from "./autoCompact";
+import { selectCouncilNote } from "./council";
 import { callToolById } from "./callToolById";
 import { evaluateToolPolicies } from "./evaluateToolPolicies";
 import { preprocessToolCalls } from "./preprocessToolCallArgs";
@@ -213,6 +214,7 @@ export const streamNormalInput = createAsyncThunk<
         ? executionNotes(state.session.history)
         : "") +
       (loopRetry > 0 ? LOOP_RETRY_NOTE : "") +
+      (state.session.mode === "agent" ? selectCouncilNote(state) : "") +
       (executionNote ?? "");
 
     const systemMessage = systemToolsFramework

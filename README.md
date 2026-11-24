@@ -104,6 +104,45 @@ When that applies, a notice appears above the input with **Review changes**, **U
 
 The chat panel uses a quiet, text-first layout that follows the active VS Code theme (light, dark or high contrast); no colours are hard-coded. Messages and the composer use a thin neutral border and a faint fill derived from the editor foreground (`--chat-border`, `--chat-fill`, `--chat-radius` in `gui/src/index.css`). Sent messages are a soft block, tool calls and thinking are single muted lines, and while the model is working the composer border pulses once per couple of seconds instead of cycling through colours. The progress panel, tool-configuration notice and `ask_user` form share the same surface. A one-line header above an ongoing conversation shows its title, the model and a "new session" button. With no bookmarked slash commands the empty chat offers four starting points that only fill the composer. In a wide editor tab the conversation is kept to a readable width. No setting is needed.
 
+## Activity timeline and thinking
+
+While the agent works, the chat shows what it is doing as one continuous timeline (a thin vertical line with a dot per step), without a single model call or poll behind it. Everything is derived from the events the app already has.
+
+- **Thinking** is the reasoning the provider actually streamed, shown with a small label and a quiet accent colour (`--chat-thinking`, from the theme's purple chart colour). While it streams, its newest two lines stay visible even when collapsed; click to expand the whole trace. If a provider exposes no reasoning, no thinking block is shown. In that case a single line with the current activity (the same text as the progress panel) covers the wait before the first tool call or text. Nothing is reconstructed or invented.
+- **Tool activity** is one compact row per call: an icon, the action (`Searching code`, `Reading`, `Editing`, ...), the file, query or symbol as code, and a status (Running with elapsed time, Awaiting approval, done with a check, Failed). When the call finishes, a one-line result is taken from what the tool really returned, for example `Found 8 matches in 4 files`, `Read 240 lines`, `Updated 2 sections` or `Found 5 results`. Where a result does not say enough, the line says less. A failed call shows a short error and the full text behind the expander. Arguments and the full output are behind the expander too, so large outputs never flood the conversation.
+- **Grouping:** several calls in one turn are grouped under `Performed N actions · 2 searches · 3 reads · 1 edit` and can be collapsed. Edits, the terminal and the plan keep their existing diff, terminal and checklist views inside the timeline.
+- **Elapsed time** is measured in the chat from the moment a call is seen running until it is seen finished. Calls that were already finished when a session is reopened show no time.
+- **Implementation Progress stays the task-level view** (planned steps, executing / waiting / paused / failed / blocked, derived from real tool events); the timeline is the step-by-step record of what ran. Neither reads progress from model-written text.
+
+## Council (opt-in)
+
+An agent-mode toggle (the people icon next to the model picker) that has several agents analyse a task before the normal agent starts. It is off by default; with it off nothing changes.
+
+How a run goes: context is prepared once (`prepare_context`, read-only) and shared; the proposing agents each write a structured plan independently; a reviewer scores the proposals blind (shuffled, labelled A/B); the cited file and line references are checked by code, not by a model; scores are weighted and normalised (correctness 35, requirements 25, maintainability 15, performance 10, security 10, simplicity 5); an optional judge is asked only when scores are close, a reviewer disagrees, or `requireJudge` is set. The result is assembled by code into a plan that is added to the agent's system prompt for that turn only. The council never edits files: implementation goes through the normal agent, diffs and approvals. If fewer than two proposals are produced, or nothing is adequately supported, the normal agent runs without a plan.
+
+With no configuration it uses three agents on the selected chat model (architect, an independent alternative, a reviewer). To use different models, add an optional block to `config.yaml`; every field is optional:
+
+```yaml
+council:
+  execution:
+    maxAgents: 3
+    timeout: 300000
+  context:
+    maxContextPerAgent: 12000 # tokens, capped by the smallest model window
+    maxOutputTokens: 2048
+  selection:
+    requireJudge: false
+  agents:
+    - { id: primary, role: architect, model: qwen3.5-9b }
+    - { id: alternative, role: alternative-thinker, model: qwen3.5-9b }
+    - { id: reviewer, role: code-reviewer, model: qwen3.5-9b }
+    - { id: judge, role: judge, model: gemma-4-26b-a4b }
+```
+
+`model` is the title of a model with the chat role. Run is sequential (one request at a time, which suits a single llama.cpp slot); the shared context comes first and is identical for every agent so the server can reuse its prompt cache. `parallel`/`hybrid` modes, a revision round (`maxRounds`) and reputation are not implemented yet and are ignored.
+
+After pulling this change rebuild `packages/config-yaml` (`npm run build` there) before building core and the GUI, because the schema gained the `council` block.
+
 ## Autocomplete
 
 The prompt format (FIM) and the number of tokens are unchanged; what changed is what fills the existing budget and how long it takes to gather.
