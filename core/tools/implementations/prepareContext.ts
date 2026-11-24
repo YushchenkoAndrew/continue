@@ -93,6 +93,7 @@ function snippet(text: string, lines = 3): string {
 async function semantic(
   task: string,
   extras: ToolExtras,
+  index: ProjectIndex,
 ): Promise<{ path: string; range: string; why: string; snip: string }[]> {
   try {
     const items = await retrieveContextItemsFromEmbeddings(
@@ -111,7 +112,11 @@ async function semantic(
       undefined,
     );
     return items.slice(0, 6).map((it) => ({
-      path: it.description,
+      // the hit's `description` is only the last two path parts; models cite what they see
+      path:
+        it.uri?.type === "file"
+          ? toRelative(index, it.uri.value)
+          : it.description,
       range: it.name.match(/\(([\d-]+)\)/)?.[1] ?? "",
       why: "semantic match for the task",
       snip: snippet(it.content),
@@ -180,7 +185,7 @@ export const prepareContextImpl: ToolImpl = async (args, extras) => {
   const focus = [...new Set([...given, ...mentioned])]
     .filter((f) => index.files.includes(f))
     .slice(0, 4);
-  const hits = await semantic(semanticQuery(task, terms), extras);
+  const hits = await semantic(semanticQuery(task, terms), extras, index);
 
   out.push("Relevant files:");
   const seen = new Set<string>();
